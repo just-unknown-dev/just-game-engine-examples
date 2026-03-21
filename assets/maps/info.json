@@ -1,0 +1,8 @@
+{
+    "name": "Desert",
+    "type": "map",
+    "credits": {
+        "artist": "tiled",
+        "source": "https://github.com/mapeditor/tiled/tree/master/examples"
+    }
+}

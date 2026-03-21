@@ -1,0 +1,110 @@
+================================================================================
+  JUST GAME ENGINE DEMO
+  Version 1.0.0  |  Powered by just_game_engine
+================================================================================
+
+ABOUT
+-----
+Just Game Engine Demo is a top-down survival arena built on the just_game_engine
+ECS (Entity-Component-System) framework. Fight waves of enemies, collect coins,
+and survive as long as possible. The game showcases rendering, audio, signals,
+database persistence, and data-driven configuration — all in Flutter.
+
+
+HOW TO PLAY
+-----------
+• Use the virtual D-pad (bottom-left) to move your player around the arena.
+• Dodge enemies — they will seek you out and damage you on contact.
+• Collect glowing coins scattered across the world to earn score.
+• Survive each 30-second wave to earn a wave-clear bonus.
+• When your health hits zero you lose a life. Lose all lives → Game Over.
+
+
+CONTROLS
+--------
+  D-pad Up / Down / Left / Right   Move player
+  Pause button (top-left)          Pause / Resume game
+  ? button (top-right)             Show this screen
+
+
+PLAYER
+------
+  Max Health      : 100 HP
+  Lives           : 3
+  Move Speed      : 220 px/s
+  Collect Radius  : 35 px  (coins within this range are auto-collected)
+  Invulnerability : 1.5 s  (grace period after being hit)
+
+
+ENEMIES
+-------
+Enemies spawn at random edges of the world and move directly toward you.
+They grow faster with every wave — watch out!
+
+  Contact Damage    : 10 HP per hit
+  Base Speed        : 60 px/s
+  Speed per Wave    : +15 px/s
+  Initial Max Count : 6 on screen at once
+  Hard Cap          : 12 enemies maximum
+  Contact Radius    : 30 px
+
+Spawn interval starts at 4 seconds and decreases by 0.1s each wave
+(minimum 1.5 seconds).
+
+
+COINS
+-----
+Coins are scattered randomly across the 1 600 × 1 200 world.
+Walk near one to collect it automatically.
+
+  Target Coins on Map   : 12
+  Replenish Threshold   : 3  (new coins spawn when fewer than 3 remain)
+  Score per Coin        : 50 pts
+
+
+WAVES
+-----
+A new wave starts every 30 seconds. With each wave:
+  • Enemies get faster (+15 px/s)
+  • Maximum enemy count increases (+1, capped at 12)
+  • Spawn interval decreases (faster enemy arrivals)
+  • You earn a Wave Clear Bonus of 500 pts
+
+
+SCORING
+-------
+  Collect a coin      +50 pts
+  Defeat an enemy    +100 pts
+  Clear a wave       +500 pts  (wave clear bonus)
+
+Your final score is saved to the leaderboard at game over.
+
+
+WORLD
+-----
+  World Size      : 1 600 × 1 200 px
+  Camera          : Smooth follow (lerp speed 0.08)
+  Background      : Deep space (#0d0d1a)
+  Boundaries      : Player is clamped — you cannot leave the arena
+
+
+TIPS & TRICKS
+-------------
+  ★  Stay near the centre — it gives you the most escape routes.
+  ★  Collect coins quickly; a full map slows enemy navigation.
+  ★  After taking a hit you have 1.5 s invulnerability — use it to reposition.
+  ★  Wave speed stacks every round — plan ahead for later waves.
+  ★  Check the leaderboard to compare scores with past sessions.
+
+
+TECH STACK
+----------
+  just_game_engine   ECS world, sprites, animations, camera, particles, audio
+  just_signals       Reactive game state (score, health, wave, phase)
+  just_database      SQLite leaderboard with aggregate stats
+  just_storage       Persistent settings (name, volume, FPS toggle)
+
+
+================================================================================
+  Good luck, player!
+================================================================================

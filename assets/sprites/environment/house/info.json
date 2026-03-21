@@ -1,0 +1,25 @@
+{
+    "name": "house",
+    "type": "environment",
+    "credits": {
+        "artist": "arlantr",
+        "source": "https://arlantr.itch.io/free-house-pixel-art"
+    },
+    "sprites": {
+        "house_01": {
+            "imagePath": "house_01.png",
+            "width": 256,
+            "height": 160
+        },
+        "house_02": {
+            "imagePath": "house_02.png",
+            "width": 384,
+            "height": 256
+        },
+        "house_03": {
+            "imagePath": "house_03.png",
+            "width": 608,
+            "height": 352
+        }
+    }
+}

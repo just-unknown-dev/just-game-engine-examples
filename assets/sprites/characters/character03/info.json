@@ -1,0 +1,67 @@
+{
+    "name": "character03",
+    "type": "character",
+    "credits": {
+        "artist": "xzany",
+        "source": "https://xzany.itch.io/top-down-adventurer-character"
+    },
+    "spriteSheet": {
+        "idle_down": {
+            "imagePath": "character_03_idle_down.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+       "idle_up": {
+            "imagePath": "character_03_idle_up.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "idle_left": {
+            "imagePath": "character_03_idle_left.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "idle_right": {
+            "imagePath": "character_03_idle_right.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "run_down": {
+            "imagePath": "character_03_run_down.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "run_up": {
+            "imagePath": "character_03_run_up.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "run_left": {
+            "imagePath": "character_03_run_left.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        },
+        "run_right": {
+            "imagePath": "character_03_run_right.png",
+            "frameWidth": 96,
+            "frameHeight": 80,
+            "frameCount": 8,
+            "linear": true
+        }
+    },
+    "description": "A brave adventurer ready to explore the world."
+}

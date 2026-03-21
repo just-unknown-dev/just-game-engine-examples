@@ -1,0 +1,21 @@
+{
+  "atlasName": "player_atlas",
+  "version": "1.0.0",
+  "sprites": {
+    "player_idle": {
+      "assetPath": "assets/objects/player/player_idle.png",
+      "renderWidth": 48,
+      "renderHeight": 48,
+      "animation": {
+        "frameDurationSeconds": 0.6,
+        "loop": true,
+        "scalePulse": {
+          "start": 1.0,
+          "end": 1.05,
+          "durationSeconds": 1.2,
+          "easing": "easeInOutSine"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "gameName": "Just Game Engine Demo",
+  "version": "1.0.0",
+  "display": {
+    "backgroundColor": "#0d0d1a",
+    "worldWidth": 1600,
+    "worldHeight": 1200,
+    "cameraLerpSpeed": 0.08
+  },
+  "player": {
+    "maxHealth": 100,
+    "lives": 3,
+    "speed": 220,
+    "collectRadius": 35,
+    "contactDamage": 10,
+    "invulnerabilityDuration": 1.5,
+    "hitFlashDuration": 0.3
+  },
+  "coins": {
+    "targetCount": 12,
+    "replenishThreshold": 3,
+    "scorePerCoin": 50
+  },
+  "enemies": {
+    "initialMaxCount": 6,
+    "hardCapCount": 12,
+    "initialSpawnInterval": 4.0,
+    "minSpawnInterval": 1.5,
+    "spawnIntervalDecrement": 0.1,
+    "contactRadius": 30,
+    "baseSpeed": 60,
+    "speedPerWave": 15,
+    "scorePerKill": 100
+  },
+  "waves": {
+    "durationSeconds": 30,
+    "maxEnemiesIncreasePerWave": 1
+  },
+  "scoring": {
+    "waveClearBonus": 500
+  }
+}
