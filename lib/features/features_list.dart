@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/models/feature_item.dart';
+import 'camera/camera_system_screen.dart';
 import 'core_engine/core_engine_screen.dart';
 import 'rendering/rendering_engine_screen.dart';
 import 'raycasting/raycasting_engine_screen.dart';
@@ -12,8 +13,12 @@ import 'input/input_system_screen.dart';
 import 'audio/audio_engine_screen.dart';
 import 'tiled/tiled_map_screen.dart';
 import 'parallax/parallax_system_screen.dart';
+import 'post_processing/post_processing_screen.dart';
+import 'shaders/shader_screen.dart';
 import 'storage/storage_signals_screen.dart';
 import 'database/database_signals_screen.dart';
+import 'effects/deterministic_effects_screen.dart';
+import 'narrative/narrative_system_screen.dart';
 
 // List of features to showcase in the Demo App.
 final List<FeatureItem> appFeatures = [
@@ -28,6 +33,13 @@ final List<FeatureItem> appFeatures = [
     icon: Icons.brush,
     description: 'Basic shape drawing and camera transformations.',
     builder: (context) => const RenderingEngineScreen(),
+  ),
+  FeatureItem(
+    title: 'Camera System',
+    icon: Icons.videocam,
+    description:
+        'Spring follow, lookahead, multi-target, trauma shake, path, rooms, cinematic, screen effects & world bounds.',
+    builder: (context) => const CameraSystemScreen(),
   ),
   FeatureItem(
     title: 'Sprite System',
@@ -78,10 +90,29 @@ final List<FeatureItem> appFeatures = [
     builder: (context) => const ParallaxSystemScreen(),
   ),
   FeatureItem(
+    title: 'Post-Processing',
+    icon: Icons.auto_fix_high,
+    description: 'Fullscreen & per-entity shader effects via ShaderComponent.',
+    builder: (context) => const PostProcessingScreen(),
+  ),
+  FeatureItem(
+    title: 'Custom Shaders',
+    icon: Icons.blur_circular,
+    description: 'Real GLSL shaders loaded via FragmentProgram.fromAsset.',
+    builder: (context) => const ShaderScreen(),
+  ),
+  FeatureItem(
     title: 'Tiled Map',
     icon: Icons.map,
     description: 'Loading and parsing .tmx map files.',
     builder: (context) => const TiledMapScreen(),
+  ),
+  FeatureItem(
+    title: 'Deterministic Effects',
+    icon: Icons.auto_awesome_motion,
+    description:
+        'ECS-driven deterministic effects: Move, Scale, Rotate, Fade, ColorTint, Shake, Path, Sequence, Parallel, Repeat & composites.',
+    builder: (context) => const DeterministicEffectsScreen(),
   ),
   FeatureItem(
     title: 'Storage & Signals',
@@ -94,5 +125,13 @@ final List<FeatureItem> appFeatures = [
     icon: Icons.storage,
     description: 'just_database paired with reactive Signals.',
     builder: (context) => const DatabaseSignalsScreen(),
+  ),
+  FeatureItem(
+    title: 'Narrative & Dialogue',
+    icon: Icons.chat_bubble_outline_rounded,
+    description:
+        'Yarn Spinner 2.x parser, branching dialogue, variables, custom commands, '
+        'reactive NarrativeSignals, ECS integration, and built-in dialogue widgets.',
+    builder: (context) => const NarrativeSystemScreen(),
   ),
 ];

@@ -35,6 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+
+  # Firebase
+  firebase_core: ^4.6.0
   
   # Just Game Engine package
   just_game_engine: ^1.4.0
@@ -75,9 +78,18 @@ flutter:
     - assets/sprites/characters/character02/
     - assets/sprites/characters/character03/
     - assets/sprites/environment/house/
-    - assets/sprites/environment/trees/
     - assets/sprites/environment/parallax/
     - assets/maps/
+
+  # Custom GLSL fragment shaders compiled and bundled by Flutter's shader pipeline.
+  shaders:
+    - assets/shaders/chromatic_aberration.frag
+    - assets/shaders/wave_distortion.frag
+    - assets/shaders/vignette_grade.frag
+    - assets/shaders/entity_chroma.frag
+    - assets/shaders/water_ripple.frag
+    - assets/shaders/hit_flash.frag
+    - assets/shaders/vertex_wave.frag
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

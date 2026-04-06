@@ -3,11 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  firebase_core
+  just_audio_engine
   url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  flutter_soloud
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

@@ -1,478 +1,110 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
-import '../../core/widgets/camera_zoom_controls.dart';
+// ─────────────────────────────────────────────────────────────────────────────
+// Demo mode
+// ─────────────────────────────────────────────────────────────────────────────
 
-class CoreEngineScreen extends StatefulWidget {
-  const CoreEngineScreen({super.key});
+enum _Demo {
+  lifecycle,
+  timeScale,
+  ecs,
+  subsystems,
+  gameLoop;
 
-  @override
-  State<CoreEngineScreen> createState() => _CoreEngineScreenState();
+  String get label => switch (this) {
+    lifecycle => 'Lifecycle',
+    timeScale => 'Time Scale',
+    ecs => 'ECS',
+    subsystems => 'Subsystems',
+    gameLoop => 'Game Loop',
+  };
+
+  IconData get icon => switch (this) {
+    lifecycle => Icons.play_circle_outline,
+    timeScale => Icons.speed,
+    ecs => Icons.grid_on,
+    subsystems => Icons.device_hub,
+    gameLoop => Icons.refresh,
+  };
+
+  Color get accentColor => switch (this) {
+    lifecycle => const Color(0xFF29B6F6),
+    timeScale => const Color(0xFFFFCA28),
+    ecs => const Color(0xFF66BB6A),
+    subsystems => const Color(0xFFAB47BC),
+    gameLoop => const Color(0xFFFF7043),
+  };
+
+  String get description => switch (this) {
+    lifecycle =>
+      'Engine transitions through uninitialized -> initialized -> running -> paused -> stopped. '
+          'Use the buttons to drive each state transition explicitly.',
+    timeScale =>
+      'Engine.time.timeScale scales deltaTime for all systems. '
+          '0 = frozen, 1 = realtime, 2 = double speed. Useful for bullet-time or pause menus.',
+    ecs =>
+      'Entity-Component-System architecture: entities are IDs, components carry data, '
+          'systems iterate archetypes. Spawn/destroy entities at runtime without GC spikes.',
+    subsystems =>
+      'Engine bundles RenderingEngine, PhysicsEngine, InputManager, AudioEngine, '
+          'AssetManager as optional subsystems - each queryable via engine.getSystem<T>().',
+    gameLoop =>
+      'The game loop drives world.update(dt) then rendering each frame via a Flutter Ticker. '
+          'Frame count, total time, fps and deltaTime are all tracked by TimeManager.',
+  };
+
+  String get codeSnippet => switch (this) {
+    lifecycle =>
+      'final engine = Engine();\n'
+          'await engine.initialize();\n\n'
+          'engine.start();   // -> EngineState.running\n'
+          'engine.pause();   // -> EngineState.paused\n'
+          'engine.resume();  // -> EngineState.running\n'
+          'engine.stop();    // -> EngineState.stopped',
+    timeScale =>
+      '// Slow-motion (50 %):\n'
+          'engine.time.timeScale = 0.5;\n\n'
+          '// Bullet-time:\n'
+          'engine.time.timeScale = 0.1;\n\n'
+          '// Realtime:\n'
+          'engine.time.timeScale = 1.0;\n\n'
+          '// Freeze (keep rendering, stop logic):\n'
+          'engine.time.timeScale = 0.0;',
+    ecs =>
+      'final world = engine.world;\n'
+          'final entity = world.createEntityWithComponents([\n'
+          '  TransformComponent(position: Offset(100, 100)),\n'
+          '  RenderableComponent(renderable: CircleRenderable(radius: 20)),\n'
+          ']);\n\n'
+          '// Remove later:\n'
+          'world.destroyEntity(entity.id);',
+    subsystems =>
+      '// Check if a subsystem is active:\n'
+          'final rendering = engine.getSystem<RenderingEngine>();\n'
+          'final physics   = engine.getSystem<PhysicsEngine>();\n\n'
+          '// Access subsystem directly:\n'
+          'engine.rendering.camera.zoom = 1.5;\n'
+          "engine.audio.play('bgm');",
+    gameLoop =>
+      '// TimeManager exposes:\n'
+          'engine.time.deltaTime;   // scaled dt in seconds\n'
+          'engine.time.totalTime;   // total scaled time\n'
+          'engine.time.fps;         // frames per second\n'
+          'engine.time.frameCount;  // total frames since start\n'
+          'engine.time.timeScale;   // current multiplier',
+  };
 }
 
-class _CoreEngineScreenState extends State<CoreEngineScreen> {
-  late final Engine _engine;
-  late final World _world;
-  final GlobalKey _gameWidgetKey = GlobalKey();
+// ─────────────────────────────────────────────────────────────────────────────
+// ECS helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-  Size _viewportSize = Size.zero;
-
-  String _status = 'Preparing core showcase...';
-
-  @override
-  void initState() {
-    super.initState();
-    _engine = Engine();
-    _world = _engine.world;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeAndSetup();
-    });
-  }
-
-  Future<void> _initializeAndSetup() async {
-    if (_engine.state == EngineState.uninitialized) {
-      final ok = await _engine.initialize();
-      if (!ok) {
-        if (!mounted) return;
-        setState(() {
-          _status = 'Engine initialization failed';
-        });
-        return;
-      }
-    }
-
-    _setupCoreShowcase();
-    _engine.start();
-
-    if (!mounted) return;
-    setState(() {
-      _status = 'Core systems running';
-    });
-  }
-
-  @override
-  void dispose() {
-    _engine.stop();
-    super.dispose();
-  }
-
-  Size _readViewportSize() {
-    final renderObject = _gameWidgetKey.currentContext?.findRenderObject();
-    if (renderObject is RenderBox && renderObject.hasSize) {
-      return renderObject.size;
-    }
-    return MediaQuery.sizeOf(context);
-  }
-
-  void _clearWorldSystemsAndEntities() {
-    final existingSystems = List<System>.from(_world.systems);
-    for (final system in existingSystems) {
-      _world.removeSystem(system);
-    }
-
-    _world.destroyAllEntities();
-  }
-
-  void _setupCoreShowcase() {
-    _viewportSize = _readViewportSize();
-    if (_viewportSize != Size.zero) {
-      _engine.rendering.camera.viewportSize = _viewportSize;
-    }
-    _engine.rendering.camera.position = Offset.zero;
-    _engine.rendering.camera.rotation = 0;
-    _engine.rendering.camera.zoom = 1;
-
-    _clearWorldSystemsAndEntities();
-
-    _world.addSystem(_CoreOrbitSystem()..priority = 90);
-    _world.addSystem(_CorePulseSystem()..priority = 85);
-    _world.addSystem(_CoreEngineStatsSystem(_engine)..priority = 75);
-    _world.addSystem(_CameraAwareRenderSystem(_engine.rendering.camera));
-
-    _createBackdrop();
-    _createCoreHub();
-    _createSubsystemNodes();
-    _createStatusTexts();
-  }
-
-  void _createBackdrop() {
-    _world.createEntityWithComponents([
-      TransformComponent(),
-      RenderableComponent(
-        syncTransform: false,
-        renderable: CustomRenderable(
-          layer: -40,
-          onRender: (canvas, size) {
-            final gridPaint = Paint()
-              ..color = const Color(0xFF1A2E40).withValues(alpha: 0.35)
-              ..strokeWidth = 1;
-
-            for (double x = -900; x <= 900; x += 70) {
-              canvas.drawLine(Offset(x, -700), Offset(x, 700), gridPaint);
-            }
-            for (double y = -700; y <= 700; y += 70) {
-              canvas.drawLine(Offset(-900, y), Offset(900, y), gridPaint);
-            }
-
-            final ringPaint = Paint()
-              ..style = PaintingStyle.stroke
-              ..color = const Color(0xFF7FE3FF).withValues(alpha: 0.18)
-              ..strokeWidth = 2;
-
-            canvas.drawCircle(Offset.zero, 110, ringPaint);
-            canvas.drawCircle(Offset.zero, 210, ringPaint);
-            canvas.drawCircle(Offset.zero, 320, ringPaint);
-          },
-        ),
-      ),
-    ], name: 'core-backdrop');
-  }
-
-  void _createCoreHub() {
-    _world.createEntityWithComponents([
-      TransformComponent(position: Offset.zero, scale: 1),
-      RenderableComponent(
-        renderable: CircleRenderable(
-          radius: 62,
-          fillColor: const Color(0xFF1D3557).withValues(alpha: 0.88),
-          strokeColor: const Color(0xFF7FE3FF),
-          strokeWidth: 4,
-          layer: 10,
-        ),
-      ),
-      _CorePulseComponent(minScale: 0.92, maxScale: 1.08, speed: 1.9),
-    ], name: 'core-hub');
-
-    _spawnText(
-      'ENGINE',
-      const Offset(0, -8),
-      const TextStyle(
-        color: Colors.white,
-        fontSize: 17,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.4,
-      ),
-      layer: 20,
-    );
-
-    _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, 18)),
-      _EngineStatsTextComponent(kind: _StatsKind.state),
-      RenderableComponent(
-        syncTransform: true,
-        renderable: TextRenderable(
-          text: '',
-          textStyle: const TextStyle(
-            color: Color(0xFF9ED5FF),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-          layer: 20,
-        ),
-      ),
-    ], name: 'engine-state-text');
-  }
-
-  void _createSubsystemNodes() {
-    final nodes =
-        <
-          ({
-            String name,
-            Color color,
-            double radius,
-            double speed,
-            double phase,
-          })
-        >[
-          (
-            name: 'Rendering',
-            color: const Color(0xFF2A9D8F),
-            radius: 170,
-            speed: 0.62,
-            phase: 0,
-          ),
-          (
-            name: 'Physics',
-            color: const Color(0xFFF4A261),
-            radius: 170,
-            speed: 0.62,
-            phase: math.pi / 3,
-          ),
-          (
-            name: 'Input',
-            color: const Color(0xFFE76F51),
-            radius: 170,
-            speed: 0.62,
-            phase: 2 * math.pi / 3,
-          ),
-          (
-            name: 'Audio',
-            color: const Color(0xFF90BE6D),
-            radius: 170,
-            speed: 0.62,
-            phase: math.pi,
-          ),
-          (
-            name: 'Animation',
-            color: const Color(0xFF577590),
-            radius: 170,
-            speed: 0.62,
-            phase: 4 * math.pi / 3,
-          ),
-          (
-            name: 'Assets',
-            color: const Color(0xFFC77DFF),
-            radius: 170,
-            speed: 0.62,
-            phase: 5 * math.pi / 3,
-          ),
-        ];
-
-    for (final node in nodes) {
-      _world.createEntityWithComponents([
-        TransformComponent(position: Offset.zero),
-        RenderableComponent(
-          renderable: CircleRenderable(
-            radius: 28,
-            fillColor: node.color.withValues(alpha: 0.9),
-            strokeColor: Colors.white.withValues(alpha: 0.7),
-            strokeWidth: 2,
-            layer: 9,
-          ),
-        ),
-        _CoreOrbitComponent(
-          radius: node.radius,
-          speed: node.speed,
-          phase: node.phase,
-        ),
-      ], name: 'node-${node.name.toLowerCase()}');
-
-      _world.createEntityWithComponents([
-        TransformComponent(position: Offset.zero),
-        _FollowEntityNameComponent(
-          targetName: 'node-${node.name.toLowerCase()}',
-        ),
-        RenderableComponent(
-          syncTransform: true,
-          renderable: TextRenderable(
-            text: node.name,
-            textStyle: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-            layer: 21,
-          ),
-        ),
-      ], name: 'label-${node.name.toLowerCase()}');
-    }
-  }
-
-  void _createStatusTexts() {
-    _world.createEntityWithComponents([
-      _EngineStatsTextComponent(kind: _StatsKind.time),
-      TransformComponent(position: const Offset(0, -200)),
-      RenderableComponent(
-        syncTransform: true,
-        renderable: TextRenderable(
-          text: '',
-          textStyle: const TextStyle(
-            color: Color(0xFF9DD9D2),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          layer: 31,
-        ),
-      ),
-    ], name: 'time-stats-text');
-
-    _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -100)),
-      _EngineStatsTextComponent(kind: _StatsKind.systems),
-      RenderableComponent(
-        syncTransform: true,
-        renderable: TextRenderable(
-          text: '',
-          textStyle: const TextStyle(color: Color(0xFFADC4D4), fontSize: 12),
-          layer: 31,
-        ),
-      ),
-    ], name: 'systems-stats-text');
-  }
-
-  void _spawnText(
-    String text,
-    Offset position,
-    TextStyle style, {
-    required int layer,
-  }) {
-    _world.createEntityWithComponents([
-      TransformComponent(position: position),
-      RenderableComponent(
-        renderable: TextRenderable(text: text, textStyle: style, layer: layer),
-      ),
-    ]);
-  }
-
-  void _setTimeScale(double value) {
-    _engine.time.timeScale = value;
-    setState(() {
-      _status = 'Time scale set to ${value.toStringAsFixed(2)}x';
-    });
-  }
-
-  Future<void> _initializeIfNeeded() async {
-    if (_engine.state == EngineState.uninitialized) {
-      final ok = await _engine.initialize();
-      setState(() {
-        _status = ok ? 'Engine initialized' : 'Initialization failed';
-      });
-    }
-  }
-
-  void _startEngine() {
-    _engine.start();
-    setState(() {
-      _status = 'Engine running';
-    });
-  }
-
-  void _pauseEngine() {
-    _engine.pause();
-    setState(() {
-      _status = 'Engine paused';
-    });
-  }
-
-  void _resumeEngine() {
-    _engine.resume();
-    setState(() {
-      _status = 'Engine resumed';
-    });
-  }
-
-  void _stopEngine() {
-    _engine.stop();
-    setState(() {
-      _status = 'Engine stopped';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rendering = _engine.getSystem<RenderingEngine>() != null;
-    final physics = _engine.getSystem<PhysicsEngine>() != null;
-    final input = _engine.getSystem<InputManager>() != null;
-    final audio = _engine.getSystem<AudioEngine>() != null;
-    final assets = _engine.getSystem<AssetManager>() != null;
-
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-          color: const Color(0xFF101925),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Core Engine Control Center',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'State: ${_engine.state.name}   |   Status: $_status',
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton(
-                    onPressed: _initializeIfNeeded,
-                    child: const Text('Initialize'),
-                  ),
-                  FilledButton(
-                    onPressed: _startEngine,
-                    child: const Text('Start'),
-                  ),
-                  FilledButton(
-                    onPressed: _pauseEngine,
-                    child: const Text('Pause'),
-                  ),
-                  FilledButton(
-                    onPressed: _resumeEngine,
-                    child: const Text('Resume'),
-                  ),
-                  FilledButton(
-                    onPressed: _stopEngine,
-                    child: const Text('Stop'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _setupCoreShowcase,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reset Scene'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Text(
-                    'Time Scale',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: _engine.time.timeScale.clamp(0, 2),
-                      min: 0,
-                      max: 2,
-                      divisions: 20,
-                      label: _engine.time.timeScale.toStringAsFixed(2),
-                      onChanged: _setTimeScale,
-                    ),
-                  ),
-                  Text(
-                    '${_engine.time.timeScale.toStringAsFixed(2)}x',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Subsystems: Rendering ${rendering ? 'OK' : 'NA'} | Physics ${physics ? 'OK' : 'NA'} | Input ${input ? 'OK' : 'NA'} | Audio ${audio ? 'OK' : 'NA'} | Assets ${assets ? 'OK' : 'NA'}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: CameraZoomControls(
-            camera: _engine.rendering.camera,
-            child: GameWidget(
-              key: _gameWidgetKey,
-              engine: _engine,
-              showFPS: true,
-              showDebug: true,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-enum _StatsKind { state, time, systems }
-
-class _CoreOrbitComponent extends Component {
-  _CoreOrbitComponent({
+class _OrbitComponent extends Component {
+  _OrbitComponent({
     required this.radius,
     required this.speed,
     required this.phase,
@@ -484,155 +116,1040 @@ class _CoreOrbitComponent extends Component {
   double angle;
 }
 
-class _CorePulseComponent extends Component {
-  _CorePulseComponent({
+class _PulseComponent extends Component {
+  _PulseComponent({
     required this.minScale,
     required this.maxScale,
     required this.speed,
+    this.phase = 0,
   });
 
   final double minScale;
   final double maxScale;
   final double speed;
+  final double phase;
   double time = 0;
 }
 
-class _FollowEntityNameComponent extends Component {
-  _FollowEntityNameComponent({required this.targetName});
-  final String targetName;
+class _SpawnTagComponent extends Component {
+  _SpawnTagComponent({required this.spawnedAt});
+  final double spawnedAt;
 }
 
-class _EngineStatsTextComponent extends Component {
-  _EngineStatsTextComponent({required this.kind});
-  final _StatsKind kind;
-}
-
-class _CoreOrbitSystem extends System {
+class _OrbitSystem extends System {
   @override
-  List<Type> get requiredComponents => [
-    TransformComponent,
-    _CoreOrbitComponent,
-  ];
+  List<Type> get requiredComponents => [TransformComponent, _OrbitComponent];
 
   @override
   void update(double dt) {
     forEach((entity) {
-      final transform = entity.getComponent<TransformComponent>()!;
-      final orbit = entity.getComponent<_CoreOrbitComponent>()!;
-
-      orbit.angle += orbit.speed * dt;
-      transform.position = Offset(
-        math.cos(orbit.angle) * orbit.radius,
-        math.sin(orbit.angle) * orbit.radius,
+      final t = entity.getComponent<TransformComponent>()!;
+      final o = entity.getComponent<_OrbitComponent>()!;
+      o.angle += o.speed * dt;
+      t.position = Offset(
+        math.cos(o.angle) * o.radius,
+        math.sin(o.angle) * o.radius,
       );
     });
   }
 }
 
-class _CorePulseSystem extends System {
+class _PulseSystem extends System {
   @override
-  List<Type> get requiredComponents => [
-    TransformComponent,
-    _CorePulseComponent,
-  ];
+  List<Type> get requiredComponents => [TransformComponent, _PulseComponent];
 
   @override
   void update(double dt) {
     forEach((entity) {
-      final transform = entity.getComponent<TransformComponent>()!;
-      final pulse = entity.getComponent<_CorePulseComponent>()!;
-
-      pulse.time += dt;
-      final wave = (math.sin(pulse.time * pulse.speed) + 1) / 2;
-      transform.scale =
-          pulse.minScale + (pulse.maxScale - pulse.minScale) * wave;
+      final t = entity.getComponent<TransformComponent>()!;
+      final p = entity.getComponent<_PulseComponent>()!;
+      p.time += dt;
+      final wave = (math.sin(p.phase + p.time * p.speed) + 1) / 2;
+      t.scale = p.minScale + (p.maxScale - p.minScale) * wave;
     });
   }
 }
 
-class _CoreEngineStatsSystem extends System {
-  _CoreEngineStatsSystem(this.engine);
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
-  final Engine engine;
-
-  @override
-  List<Type> get requiredComponents => [
-    TransformComponent,
-    RenderableComponent,
-    _EngineStatsTextComponent,
-  ];
+class CoreEngineScreen extends StatefulWidget {
+  const CoreEngineScreen({super.key});
 
   @override
-  void update(double dt) {
-    final totalEntities = world.entities.length;
-    final totalSystems = world.systems.length;
-
-    forEach((entity) {
-      final statsKind = entity.getComponent<_EngineStatsTextComponent>()!.kind;
-      final renderComp = entity.getComponent<RenderableComponent>()!;
-      final transform = entity.getComponent<TransformComponent>()!;
-      final text = renderComp.renderable as TextRenderable;
-
-      switch (statsKind) {
-        case _StatsKind.state:
-          text.text = engine.state.name.toUpperCase();
-          break;
-        case _StatsKind.time:
-          text.text =
-              'Time ${engine.time.totalTime.toStringAsFixed(2)}s | dt ${engine.time.deltaTime.toStringAsFixed(4)} | fps ${engine.time.fps.toStringAsFixed(1)} | frame ${engine.time.frameCount}';
-          break;
-        case _StatsKind.systems:
-          text.text =
-              'World entities $totalEntities | World systems $totalSystems';
-          break;
-      }
-
-      final follow = entity.getComponent<_FollowEntityNameComponent>();
-      if (follow != null) {
-        final target = world.findEntityByName(follow.targetName);
-        if (target != null) {
-          final targetTransform = target.getComponent<TransformComponent>();
-          if (targetTransform != null) {
-            transform.position = targetTransform.position + const Offset(0, 40);
-          }
-        }
-      }
-    });
-  }
+  State<CoreEngineScreen> createState() => _CoreEngineScreenState();
 }
 
-class _CameraAwareRenderSystem extends System {
-  _CameraAwareRenderSystem(this.camera);
+class _CoreEngineScreenState extends State<CoreEngineScreen>
+    with SingleTickerProviderStateMixin {
+  late final Engine _engine;
+  late final World _world;
+  late final Ticker _ticker;
 
-  final Camera camera;
+  Duration _lastTick = Duration.zero;
+
+  _Demo _demo = _Demo.lifecycle;
+  String _statusMessage = '';
+  bool _initialized = false;
+
+  int _ecsBatchSize = 12;
 
   @override
-  List<Type> get requiredComponents => [
-    TransformComponent,
-    RenderableComponent,
-  ];
-
-  @override
-  void render(Canvas canvas, Size size) {
-    camera.viewportSize = size;
-    canvas.save();
-    camera.applyTransform(canvas, size);
-
-    forEach((entity) {
-      final transform = entity.getComponent<TransformComponent>()!;
-      final renderComp = entity.getComponent<RenderableComponent>()!;
-
-      if (renderComp.syncTransform) {
-        renderComp.renderable.position = transform.position;
-        renderComp.renderable.rotation = transform.rotation;
-        renderComp.renderable.scale = transform.scale;
-      }
-
-      if (renderComp.renderable.visible) {
-        renderComp.renderable.render(canvas, size);
-      }
+  void initState() {
+    super.initState();
+    _engine = Engine();
+    _world = _engine.world;
+    _ticker = createTicker(_onTick)..start();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _ensureInitialized();
+      _buildDemo(_demo);
     });
+  }
 
-    canvas.restore();
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _engine.stop();
+    _world.destroyAllEntities();
+    _world.clearSystems();
+    super.dispose();
+  }
+
+  void _onTick(Duration elapsed) {
+    if (_lastTick == Duration.zero) {
+      _lastTick = elapsed;
+      return;
+    }
+    final dt = (elapsed - _lastTick).inMicroseconds / 1000000.0;
+    _lastTick = elapsed;
+
+    if (_engine.state == EngineState.running) {
+      _world.update(dt * _engine.time.timeScale);
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _ensureInitialized() async {
+    if (_initialized) return;
+    final ok = await _engine.initialize();
+    _initialized = ok;
+    if (ok) _engine.start();
+    if (mounted) {
+      setState(
+        () => _statusMessage = ok ? 'Engine running' : 'Initialization failed',
+      );
+    }
+  }
+
+  void _buildDemo(_Demo demo) {
+    _demo = demo;
+    _statusMessage = '';
+    _ecsBatchSize = 12;
+
+    _world.destroyAllEntities();
+    _world.clearSystems();
+    _engine.rendering.camera.reset();
+
+    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
+    _world.addSystem(_OrbitSystem()..priority = 80);
+    _world.addSystem(_PulseSystem()..priority = 75);
+
+    _spawnGrid();
+
+    switch (demo) {
+      case _Demo.lifecycle:
+        _buildLifecycle();
+      case _Demo.timeScale:
+        _buildTimeScale();
+      case _Demo.ecs:
+        _buildEcs();
+      case _Demo.subsystems:
+        _buildSubsystems();
+      case _Demo.gameLoop:
+        _buildGameLoop();
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  void _spawnGrid() {
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      RenderableComponent(
+        syncTransform: false,
+        renderable: CustomRenderable(
+          layer: -20,
+          getBoundsCallback: () => const Rect.fromLTWH(-900, -600, 1800, 1200),
+          onRender: (canvas, _) {
+            final gridPaint = Paint()
+              ..color = const Color(0xFF1A2535)
+              ..strokeWidth = 1.0;
+            for (double x = -900; x <= 900; x += 80) {
+              canvas.drawLine(Offset(x, -600), Offset(x, 600), gridPaint);
+            }
+            for (double y = -600; y <= 600; y += 80) {
+              canvas.drawLine(Offset(-900, y), Offset(900, y), gridPaint);
+            }
+            final crossPaint = Paint()
+              ..color = const Color(0xFF2A3F55)
+              ..strokeWidth = 2.0;
+            canvas.drawLine(
+              const Offset(-30, 0),
+              const Offset(30, 0),
+              crossPaint,
+            );
+            canvas.drawLine(
+              const Offset(0, -30),
+              const Offset(0, 30),
+              crossPaint,
+            );
+          },
+        ),
+      ),
+    ]);
+  }
+
+  void _buildLifecycle() {
+    for (int i = 0; i < 6; i++) {
+      final color = HSLColor.fromAHSL(1.0, i * 60.0, 0.7, 0.55).toColor();
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 5,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 50),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                14,
+                Paint()
+                  ..color = color.withValues(alpha: 0.28)
+                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+              );
+              canvas.drawCircle(Offset.zero, 10, Paint()..color = color);
+              canvas.drawCircle(
+                Offset.zero,
+                10,
+                Paint()
+                  ..color = Colors.white.withValues(alpha: 0.5)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.5,
+              );
+            },
+          ),
+        ),
+        _OrbitComponent(radius: 140, speed: 0.55, phase: i * math.pi / 3),
+      ]);
+    }
+
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      RenderableComponent(
+        renderable: CustomRenderable(
+          layer: 10,
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 80),
+          onRender: (canvas, _) {
+            canvas.drawCircle(
+              Offset.zero,
+              72,
+              Paint()
+                ..color = const Color(0xFF0D1F33).withValues(alpha: 0.9)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+            );
+            canvas.drawCircle(
+              Offset.zero,
+              64,
+              Paint()..color = const Color(0xFF0D1F33),
+            );
+            canvas.drawCircle(
+              Offset.zero,
+              64,
+              Paint()
+                ..color = const Color(0xFF29B6F6).withValues(alpha: 0.6)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 3,
+            );
+          },
+        ),
+      ),
+      _PulseComponent(minScale: 0.96, maxScale: 1.04, speed: 1.4),
+    ], name: 'engine-hub');
+
+    _world.createEntityWithComponents([
+      TransformComponent(position: const Offset(0, -10)),
+      RenderableComponent(
+        syncTransform: true,
+        renderable: TextRenderable(
+          text: 'ENGINE',
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.6,
+          ),
+          layer: 12,
+        ),
+      ),
+    ]);
+
+    _statusMessage = 'Use the buttons to drive state transitions';
+  }
+
+  void _buildTimeScale() {
+    _engine.time.timeScale = 1.0;
+
+    final speeds = [0.4, 0.8, 1.4, 2.2];
+    final radii = [60.0, 110.0, 165.0, 220.0];
+    final colors = [
+      const Color(0xFF42A5F5),
+      const Color(0xFF66BB6A),
+      const Color(0xFFFFCA28),
+      const Color(0xFFFF7043),
+    ];
+
+    for (int i = 0; i < 4; i++) {
+      _world.createEntityWithComponents([
+        TransformComponent(position: Offset.zero),
+        RenderableComponent(
+          syncTransform: false,
+          renderable: CustomRenderable(
+            layer: 2,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: radii[i] + 2),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                radii[i],
+                Paint()
+                  ..color = colors[i].withValues(alpha: 0.1)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1,
+              );
+            },
+          ),
+        ),
+      ]);
+
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 8,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 22),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                16,
+                Paint()
+                  ..color = colors[i].withValues(alpha: 0.25)
+                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+              );
+              canvas.drawCircle(Offset.zero, 11, Paint()..color = colors[i]);
+              canvas.drawCircle(
+                Offset.zero,
+                11,
+                Paint()
+                  ..color = Colors.white.withValues(alpha: 0.5)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.5,
+              );
+            },
+          ),
+        ),
+        _OrbitComponent(
+          radius: radii[i],
+          speed: speeds[i],
+          phase: i * math.pi / 2,
+        ),
+      ], name: 'timescale-ball-$i');
+    }
+
+    _statusMessage = 'Adjust the time scale slider below';
+  }
+
+  void _buildEcs() {
+    _spawnEcsBatch();
+    _statusMessage = 'Spawn and destroy entity batches';
+  }
+
+  void _spawnEcsBatch() {
+    final rng = math.Random();
+    final colors = [
+      const Color(0xFF66BB6A),
+      const Color(0xFF29B6F6),
+      const Color(0xFFAB47BC),
+      const Color(0xFFFF7043),
+      const Color(0xFFFFCA28),
+    ];
+
+    for (int i = 0; i < _ecsBatchSize; i++) {
+      final color = colors[rng.nextInt(colors.length)];
+      final radius = 50.0 + rng.nextDouble() * 180;
+      final speed = (0.3 + rng.nextDouble() * 1.2) * (rng.nextBool() ? 1 : -1);
+      final phase = rng.nextDouble() * math.pi * 2;
+
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 6,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 18),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                10,
+                Paint()
+                  ..color = color.withValues(alpha: 0.22)
+                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+              );
+              canvas.drawCircle(Offset.zero, 7, Paint()..color = color);
+            },
+          ),
+        ),
+        _OrbitComponent(radius: radius, speed: speed, phase: phase),
+        _SpawnTagComponent(spawnedAt: _engine.time.totalTime),
+      ]);
+    }
+  }
+
+  void _destroyAllEcsEntities() {
+    final toRemove = _world.entities
+        .where((e) => e.hasComponent<_SpawnTagComponent>())
+        .toList();
+    for (final e in toRemove) {
+      _world.destroyEntity(e);
+    }
+  }
+
+  void _buildSubsystems() {
+    const nodes = [
+      ('Rendering', Color(0xFF2A9D8F), 0.0),
+      ('Physics', Color(0xFFF4A261), 1.047),
+      ('Input', Color(0xFFE76F51), 2.094),
+      ('Audio', Color(0xFF90BE6D), 3.142),
+      ('AssetMgr', Color(0xFFC77DFF), 4.189),
+      ('TimeManager', Color(0xFF29B6F6), 5.236),
+    ];
+
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      RenderableComponent(
+        renderable: CustomRenderable(
+          layer: 10,
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 60),
+          onRender: (canvas, _) {
+            canvas.drawCircle(
+              Offset.zero,
+              52,
+              Paint()..color = const Color(0xFF0D1F33),
+            );
+            canvas.drawCircle(
+              Offset.zero,
+              52,
+              Paint()
+                ..color = const Color(0xFFAB47BC).withValues(alpha: 0.6)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 3,
+            );
+          },
+        ),
+      ),
+      _PulseComponent(minScale: 0.97, maxScale: 1.03, speed: 1.2),
+    ]);
+
+    _world.createEntityWithComponents([
+      TransformComponent(position: const Offset(0, -6)),
+      RenderableComponent(
+        syncTransform: true,
+        renderable: TextRenderable(
+          text: 'ENGINE',
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.4,
+          ),
+          layer: 12,
+        ),
+      ),
+    ]);
+
+    for (final (name, color, phase) in nodes) {
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 7,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 36),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                28,
+                Paint()
+                  ..color = color.withValues(alpha: 0.22)
+                  ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+              );
+              canvas.drawCircle(Offset.zero, 22, Paint()..color = color);
+              canvas.drawCircle(
+                Offset.zero,
+                22,
+                Paint()
+                  ..color = Colors.white.withValues(alpha: 0.4)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 2,
+              );
+            },
+          ),
+        ),
+        _OrbitComponent(radius: 160, speed: 0.55, phase: phase),
+      ], name: 'node-${name.toLowerCase()}');
+
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          syncTransform: true,
+          renderable: TextRenderable(
+            text: name,
+            textStyle: TextStyle(
+              color: color.withValues(alpha: 0.9),
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+            layer: 9,
+          ),
+        ),
+        _OrbitComponent(radius: 160, speed: 0.55, phase: phase),
+      ]);
+    }
+
+    _statusMessage = 'Each node is a subsystem registered in Engine';
+  }
+
+  void _buildGameLoop() {
+    for (int i = 0; i < 5; i++) {
+      final color = HSLColor.fromAHSL(
+        1.0,
+        200.0 + i * 28,
+        0.75,
+        0.55,
+      ).toColor();
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 4,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 60.0 + i * 40),
+            onRender: (canvas, _) {
+              canvas.drawCircle(
+                Offset.zero,
+                50.0 + i * 40,
+                Paint()
+                  ..color = color.withValues(alpha: 0.08)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1,
+              );
+            },
+          ),
+        ),
+        _PulseComponent(
+          minScale: 0.97,
+          maxScale: 1.03,
+          speed: 0.6 + i * 0.2,
+          phase: i * 0.6,
+        ),
+      ]);
+
+      _world.createEntityWithComponents([
+        TransformComponent(),
+        RenderableComponent(
+          renderable: CustomRenderable(
+            layer: 7,
+            getBoundsCallback: () =>
+                Rect.fromCircle(center: Offset.zero, radius: 10),
+            onRender: (canvas, _) {
+              canvas.drawCircle(Offset.zero, 5, Paint()..color = color);
+            },
+          ),
+        ),
+        _OrbitComponent(
+          radius: 50.0 + i * 40,
+          speed: 1.0 + i * 0.4,
+          phase: i * math.pi * 0.4,
+        ),
+      ]);
+    }
+
+    _statusMessage = 'Frame metrics are live in the header';
+  }
+
+  Future<void> _initialize() async {
+    await _ensureInitialized();
+    setState(() => _statusMessage = 'Initialized');
+  }
+
+  void _start() {
+    _engine.start();
+    setState(() => _statusMessage = 'Engine started');
+  }
+
+  void _pause() {
+    _engine.pause();
+    setState(() => _statusMessage = 'Engine paused');
+  }
+
+  void _resume() {
+    _engine.resume();
+    setState(() => _statusMessage = 'Engine resumed');
+  }
+
+  void _stop() {
+    _engine.stop();
+    setState(() => _statusMessage = 'Engine stopped');
+  }
+
+  void _setTimeScale(double v) {
+    _engine.time.timeScale = v;
+    setState(() => _statusMessage = 'Time scale -> ${v.toStringAsFixed(2)}x');
+  }
+
+  String get _statsLine {
+    final t = _engine.time;
+    return 'state ${_engine.state.name}'
+        '  fps ${t.fps.toStringAsFixed(1)}'
+        '  dt ${t.deltaTime.toStringAsFixed(4)}'
+        '  total ${t.totalTime.toStringAsFixed(2)} s'
+        '  frame ${t.frameCount}'
+        '  scale ${t.timeScale.toStringAsFixed(2)}x'
+        '  entities ${_world.entities.length}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(child: _buildCanvas()),
+        _buildDemoSelector(),
+        _buildControlPanel(),
+        _buildCodeCard(),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: const Color(0xFF060D18),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_demo.icon, color: _demo.accentColor, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                _demo.label,
+                style: TextStyle(
+                  color: _demo.accentColor,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              const Text(
+                'Engine  *  World  *  TimeManager',
+                style: TextStyle(color: Color(0xFF29B6F6), fontSize: 10),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            _demo.description,
+            style: const TextStyle(color: Colors.white60, fontSize: 11),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _statsLine,
+            style: TextStyle(
+              color: _demo.accentColor.withValues(alpha: 0.85),
+              fontSize: 11,
+              fontFamily: 'monospace',
+            ),
+          ),
+          if (_statusMessage.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              _statusMessage,
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCanvas() {
+    return GameCameraControls(
+      camera: _engine.rendering.camera,
+      enablePan: true,
+      enablePinch: true,
+      showZoomLevel: true,
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+    );
+  }
+
+  Widget _buildDemoSelector() {
+    return Container(
+      color: const Color(0xFF060D18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(height: 1, color: Color(0xFF121E2E)),
+          SizedBox(
+            height: 50,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              itemCount: _Demo.values.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, i) {
+                final d = _Demo.values[i];
+                final active = d == _demo;
+                return FilterChip(
+                  avatar: Icon(
+                    d.icon,
+                    size: 13,
+                    color: active ? d.accentColor : Colors.white38,
+                  ),
+                  label: Text(
+                    d.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: active ? Colors.white : Colors.white54,
+                    ),
+                  ),
+                  selected: active,
+                  showCheckmark: false,
+                  selectedColor: d.accentColor.withValues(alpha: 0.18),
+                  backgroundColor: const Color(0xFF0E1A2A),
+                  side: BorderSide(
+                    color: active
+                        ? d.accentColor.withValues(alpha: 0.7)
+                        : const Color(0xFF1E2E40),
+                  ),
+                  onSelected: (_) => _buildDemo(d),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlPanel() {
+    return Container(
+      color: const Color(0xFF060D18),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      child: _buildDemoControls(),
+    );
+  }
+
+  Widget _buildDemoControls() {
+    switch (_demo) {
+      case _Demo.lifecycle:
+        return _buildLifecycleControls();
+      case _Demo.timeScale:
+        return _buildTimeScaleControls();
+      case _Demo.ecs:
+        return _buildEcsControls();
+      case _Demo.subsystems:
+        return _buildSubsystemsControls();
+      case _Demo.gameLoop:
+        return _buildGameLoopControls();
+    }
+  }
+
+  Widget _buildLifecycleControls() {
+    final state = _engine.state;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        _actionButton(
+          'Initialize',
+          const Color(0xFF29B6F6),
+          state == EngineState.uninitialized ? _initialize : null,
+        ),
+        _actionButton(
+          'Start',
+          const Color(0xFF66BB6A),
+          state == EngineState.initialized ? _start : null,
+        ),
+        _actionButton(
+          'Pause',
+          const Color(0xFFFFCA28),
+          state == EngineState.running ? _pause : null,
+        ),
+        _actionButton(
+          'Resume',
+          const Color(0xFF66BB6A),
+          state == EngineState.paused ? _resume : null,
+        ),
+        _actionButton(
+          'Stop',
+          const Color(0xFFFF5252),
+          state == EngineState.running || state == EngineState.paused
+              ? _stop
+              : null,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '-> ${state.name}',
+          style: TextStyle(
+            color: _demo.accentColor,
+            fontSize: 12,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeScaleControls() {
+    final scale = _engine.time.timeScale;
+    return Row(
+      children: [
+        const Text(
+          'timeScale',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+        Expanded(
+          child: Slider(
+            value: scale.clamp(0.0, 3.0),
+            min: 0,
+            max: 3,
+            divisions: 30,
+            activeColor: _demo.accentColor,
+            onChanged: _setTimeScale,
+          ),
+        ),
+        SizedBox(
+          width: 46,
+          child: Text(
+            '${scale.toStringAsFixed(2)}x',
+            style: TextStyle(
+              color: _demo.accentColor,
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _actionButton('0x', _demo.accentColor, () => _setTimeScale(0.0)),
+        const SizedBox(width: 4),
+        _actionButton('1x', _demo.accentColor, () => _setTimeScale(1.0)),
+        const SizedBox(width: 4),
+        _actionButton('2x', _demo.accentColor, () => _setTimeScale(2.0)),
+      ],
+    );
+  }
+
+  Widget _buildEcsControls() {
+    final liveCount = _world.entities
+        .where((e) => e.hasComponent<_SpawnTagComponent>())
+        .length;
+    return Row(
+      children: [
+        const Text(
+          'Batch:',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+        const SizedBox(width: 6),
+        _actionButton('+8', const Color(0xFF66BB6A), () {
+          _ecsBatchSize = 8;
+          _spawnEcsBatch();
+        }),
+        const SizedBox(width: 4),
+        _actionButton('+16', const Color(0xFF66BB6A), () {
+          _ecsBatchSize = 16;
+          _spawnEcsBatch();
+        }),
+        const SizedBox(width: 4),
+        _actionButton('+32', const Color(0xFF66BB6A), () {
+          _ecsBatchSize = 32;
+          _spawnEcsBatch();
+        }),
+        const SizedBox(width: 8),
+        _actionButton(
+          'Destroy All',
+          const Color(0xFFFF5252),
+          liveCount > 0 ? _destroyAllEcsEntities : null,
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'live: $liveCount entities',
+          style: const TextStyle(
+            color: Colors.white38,
+            fontSize: 11,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubsystemsControls() {
+    final items = [
+      ('Rendering', _engine.getSystem<RenderingEngine>() != null),
+      ('Physics', _engine.getSystem<PhysicsEngine>() != null),
+      ('Input', _engine.getSystem<InputManager>() != null),
+      ('Audio', _engine.getSystem<AudioEngine>() != null),
+      ('Assets', _engine.getSystem<AssetManager>() != null),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final (name, active) in items)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: active
+                  ? const Color(0xFFAB47BC).withValues(alpha: 0.15)
+                  : const Color(0xFF111C2A),
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(
+                color: active
+                    ? const Color(0xFFAB47BC).withValues(alpha: 0.5)
+                    : const Color(0xFF1A2535),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  active ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 11,
+                  color: active ? const Color(0xFFAB47BC) : Colors.white30,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white30,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGameLoopControls() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        'Ticker-driven loop  *  world.update(dt) each frame  *  stats update live in the header',
+        style: TextStyle(color: Colors.white38, fontSize: 11),
+      ),
+    );
+  }
+
+  Widget _actionButton(String label, Color color, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: onTap != null
+              ? color.withValues(alpha: 0.15)
+              : const Color(0xFF111C2A),
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color: onTap != null
+                ? color.withValues(alpha: 0.55)
+                : const Color(0xFF1A2535),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: onTap != null ? Colors.white : Colors.white30,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCodeCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF090F1A),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _demo.accentColor.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(_demo.icon, size: 13, color: _demo.accentColor),
+                const SizedBox(width: 6),
+                Text(
+                  _demo.label,
+                  style: TextStyle(
+                    color: _demo.accentColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  'just_game_engine  Engine API',
+                  style: TextStyle(color: Colors.white24, fontSize: 9),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 110,
+              width: double.infinity,
+              child: SingleChildScrollView(
+                child: Text(
+                  _demo.codeSnippet,
+                  style: const TextStyle(
+                    color: Color(0xFFB0C8E0),
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    height: 1.6,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

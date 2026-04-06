@@ -1,0 +1,279 @@
+// =============================================================================
+//  embervale.yarn
+//  The Rusty Anchor Inn — a full showcase of Yarn Spinner 2.x features:
+//    • Multi-speaker lines with character prefixes
+//    • {$var} inline variable substitution
+//    • <<set $var = expr>> assignments
+//    • <<if>> / <<elseif>> / <<else>> / <<endif>> conditional blocks
+//    • -> choice options with indented bodies
+//    • #if condition  guards on choices
+//    • <<jump NodeTitle>> non-linear navigation
+//    • <<stop>> to end a branch
+//    • #line:key  localization hooks
+//    • #audio:key  voice-over / SFX hooks
+//    • Custom <<command args>> for game-side handlers
+// =============================================================================
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Entry point
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: EmbervaleInn
+tags: location inn entry
+---
+// Initialise all variables used across nodes
+<<set $gold         = 15>>
+<<set $reputation   = 0>>
+<<set $questAccepted = false>>
+<<set $innkeeperMet  = false>>
+<<set $roomTaken     = false>>
+<<set $ateMeal       = false>>
+
+// Ambient setup command — register "ambient_sound" in DialogueCommandRegistry
+<<ambient_sound crackling_fire>>
+
+Narrator: You push open the heavy oak door of The Rusty Anchor. #line:inn.enter #audio:sfx_door_open
+Narrator: Firelight flickers across worn wooden beams. The scent of pine resin and venison stew fills the air. #line:inn.enter.desc
+
+Innkeeper: *looks up from polishing a tankard* Ah! A traveler. Not many brave the mountain road this late. #line:harwick.greet #audio:vo_harwick_greet
+Innkeeper: Welcome to the Rusty Anchor. Name's Harwick. #line:harwick.name
+
+<<set $innkeeperMet = true>>
+
+-> Ask about the ruins.
+    <<jump AskAboutRuins>>
+-> Ask about a room for the night.
+    <<jump AskAboutRoom>>
+-> Buy a warm meal.  #if $gold >= 3
+    <<jump BuyMeal>>
+-> I cannot afford anything right now.  #if $gold < 3
+    Innkeeper: Times are hard, friend. Sit by the fire at least — it's free. #line:harwick.no_gold
+    <<jump FiresideSit>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ruins / quest branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: AskAboutRuins
+tags: quest ruins
+---
+Innkeeper: The old Vareth ruins? *lowers voice and glances at the door* #line:harwick.ruins.intro
+Innkeeper: Strange lights have been seen there three nights running. #line:harwick.ruins.lights
+Innkeeper: Old Mira — she tends the candles at the temple — says she heard singing underground. #line:harwick.ruins.mira
+Innkeeper: No words. Just melody. Rising through the stone. #line:harwick.ruins.melody #audio:vo_harwick_ruins
+
+-> That sounds genuinely dangerous.
+    Innkeeper: Aye. Two hunters went to investigate last week. #line:harwick.ruins.hunters
+    Innkeeper: Only one came back. Wouldn't speak of what he saw. #line:harwick.ruins.hunter_return
+    <<set $reputation = $reputation + 1>>
+    <<jump QuestOffer>>
+
+-> Sounds like folklore to me.
+    Innkeeper: *shrugs* Maybe. But folk don't conjure lights that bright out of thin air. #line:harwick.ruins.shrug
+    <<jump QuestOffer>>
+===
+
+title: QuestOffer
+tags: quest offer
+---
+Innkeeper: Either way — there's a merchant, Aldric, who lost a shipment near those ruins. #line:harwick.quest.aldric
+Innkeeper: He's offering 50 gold to anyone who recovers it. Or at least finds out what happened to it. #line:harwick.quest.reward
+
+-> I will look into it.
+    <<set $questAccepted = true>>
+    <<set $reputation    = $reputation + 2>>
+
+    Innkeeper: Brave soul. Come back in one piece, {$playerName}. #line:harwick.quest.accept
+    Innkeeper: I will keep a room warm for you — no charge if you bring news. #line:harwick.quest.room_offer
+
+    // Custom command — flash a quest-accept visual in game code
+    <<flash_quest_accept>>
+
+    <<jump InnHub>>
+
+-> I will pass. Too risky.
+    Innkeeper: No shame in that. The road ahead is long enough without ruins added to it. #line:harwick.quest.decline
+    <<jump InnHub>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Room branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: AskAboutRoom
+tags: inn room
+---
+Innkeeper: A room? Aye, five gold a night. Clean sheets, no rats — I can promise at least one of those. #line:harwick.room.offer #audio:vo_harwick_room
+
+<<if $gold >= 5>>
+    -> Take the room.  #if $gold >= 5
+        <<set $gold     = $gold - 5>>
+        <<set $roomTaken = true>>
+        <<set $reputation = $reputation + 1>>
+
+        Innkeeper: Excellent. Room three, top of the stairs. #line:harwick.room.taken
+        Innkeeper: Breakfast is at dawn — don't be late or the miners will eat your share. #line:harwick.room.breakfast
+
+        Narrator: You hand over five gold. It feels good to know there is a warm bed waiting. #line:inn.room.narrator
+        <<sound_effect coins_clink>>
+        <<jump InnHub>>
+
+    -> Perhaps later.
+        Innkeeper: Door's always open. #line:harwick.room.later
+        <<jump InnHub>>
+<<else>>
+    Innkeeper: Hmm. *counts on fingers* Five gold, friend. You are a bit short. #line:harwick.room.short
+
+    Innkeeper: Tell you what — help me stack those crates in the cellar and we will call it square. #line:harwick.room.barter
+
+    -> Agree to help.
+        <<set $reputation = $reputation + 1>>
+        <<set $roomTaken  = true>>
+        Narrator: You spend an hour hauling barrels. Your back aches, but the room is yours. #line:inn.room.barter_done
+        Innkeeper: Top of the stairs. Don't wake the guard — he sleeps light and grumpy. #line:harwick.room.warn
+        <<jump InnHub>>
+
+    -> Decline.
+        Innkeeper: Fair enough. The fire costs nothing. #line:harwick.room.decline
+        <<jump InnHub>>
+<<endif>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Meal branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: BuyMeal
+tags: inn meal
+---
+<<set $gold   = $gold - 3>>
+<<set $ateMeal = true>>
+
+Innkeeper: Good choice. Mira's venison stew — best in the valley. Three gold. #line:harwick.meal.serve #audio:vo_harwick_meal
+<<sound_effect bowl_placed>>
+
+Narrator: A steaming bowl arrives. Rich, dark broth. Chunks of meat and root vegetables. #line:inn.meal.desc
+Narrator: You eat slowly, watching the other patrons. #line:inn.meal.watch
+
+Narrator: A hooded figure in the corner hasn't touched her drink in an hour. #line:inn.meal.figure
+Narrator: Two miners argue over a map in a language you don't recognize. #line:inn.meal.miners
+Narrator: A child sleeps under a table, one arm around a small grey cat. #line:inn.meal.child
+
+Innkeeper: *refills your cup* You have the look of someone who has seen trouble, friend. #line:harwick.meal.trouble
+
+-> Ask about the hooded figure.
+    Innkeeper: *quietly* That's Seren. Used to be a royal cartographer. #line:harwick.meal.seren
+    Innkeeper: Turned up three weeks ago. Pays well, says nothing. #line:harwick.meal.seren2
+    Innkeeper: Whatever drove her here — she is not ready to talk about it yet. #line:harwick.meal.seren3
+    <<jump InnHub>>
+
+-> Say nothing.
+    Narrator: You finish your meal in comfortable silence. #line:inn.meal.silence
+    Narrator: The fire crackles. Snow hisses against the shutters outside. #line:inn.meal.fire
+    <<jump InnHub>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fireside (broke) branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: FiresideSit
+tags: inn fireside
+---
+Narrator: You settle into a chair close to the hearth. #line:inn.fireside.sit
+Narrator: Warmth seeps into tired muscles. For a moment, the world is very small and very quiet. #line:inn.fireside.warm
+
+Innkeeper: *slides over a small cup* Water and herbs only, but it will warm you. #line:harwick.fireside.cup
+Innkeeper: Everyone who comes through that door deserves at least that much. #line:harwick.fireside.kind
+
+Narrator: You sit for a long time, watching the embers pulse low and orange. #line:inn.fireside.embers
+
+<<jump InnHub>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hub — revisitable after any branch
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: InnHub
+tags: hub revisitable
+---
+<<if $questAccepted>>
+Narrator: The quest weighs on your mind. Ruins. Lights. A missing shipment. #line:inn.hub.quest_weight
+<<elseif $roomTaken>>
+Narrator: The inn settles around you. A bed awaits upstairs. #line:inn.hub.room_taken
+<<else>>
+Narrator: The inn settles around you, warm and unhurried. #line:inn.hub.idle
+<<endif>>
+
+Innkeeper: Anything else I can help with? #line:harwick.hub.prompt
+
+-> Ask about the ruins.  #if !$questAccepted
+    <<jump AskAboutRuins>>
+
+-> Buy a meal.  #if !$ateMeal && $gold >= 3
+    <<jump BuyMeal>>
+
+-> Get a room.  #if !$roomTaken
+    <<jump AskAboutRoom>>
+
+-> Check your gold.
+    Narrator: You count your coin. {$gold} gold remaining. #line:inn.hub.gold_count
+    <<jump InnHub>>
+
+-> Head upstairs to bed.  #if $roomTaken
+    <<jump GoodNight>>
+
+-> Leave the inn.
+    <<jump Farewell>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Good night
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: GoodNight
+tags: sleep ending
+---
+Narrator: You climb the narrow stairs by candlelight. #line:inn.night.climb #audio:sfx_stairs
+Narrator: The room is small but tidy — a wool blanket, a shuttered window, a candle stub on the sill. #line:inn.night.room
+
+<<if $questAccepted>>
+Narrator: Tomorrow you will head for the Vareth ruins. Tonight — sleep. #line:inn.night.quest
+<<elseif $ateMeal>>
+Narrator: The stew sits warm in your stomach. Tomorrow is another road. #line:inn.night.meal
+<<else>>
+Narrator: Tomorrow is another road. Tonight — sleep. #line:inn.night.default
+<<endif>>
+
+Innkeeper: *calling up the stairs* Sleep well! Mountain wind picks up at midnight — don't mind the rattling. #line:harwick.goodnight #audio:vo_harwick_night
+
+Narrator: The candle gutters. Outside, the first snow of the season begins to fall. #line:inn.night.snow
+
+// Custom command — fade to black over 1.2 seconds
+<<fade_out 1.2>>
+===
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Farewell
+// ─────────────────────────────────────────────────────────────────────────────
+
+title: Farewell
+tags: exit ending
+---
+<<if $questAccepted>>
+Innkeeper: Safe roads, {$playerName}. #line:harwick.farewell.quest1
+Innkeeper: And watch yourself near those ruins. The valley needs more living people, not fewer. #line:harwick.farewell.quest2 #audio:vo_harwick_farewell_quest
+<<elseif $reputation >= 2>>
+Innkeeper: It was good to meet you, {$playerName}. Come back when you pass through again. #line:harwick.farewell.rep
+<<else>>
+Innkeeper: Safe travels, friend. The door is always open. #line:harwick.farewell.default
+<<endif>>
+
+Narrator: You step out into the cold night. #line:inn.farewell.exit #audio:sfx_door_close
+Narrator: The stars are sharp and very far away. #line:inn.farewell.stars
+<<ambient_sound night_wind>>
+
+<<stop>>
+===
