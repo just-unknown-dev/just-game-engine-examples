@@ -168,9 +168,9 @@ enum _Demo {
     spatial3d =>
       '// Mark the listener entity:\n'
           'listener.addComponent(AudioListenerComponent());\n'
-          'listener.addComponent(TransformComponent(position: playerPos));\n\n'
+          'listener.addComponent(TransformComponent(position: Vector3.fromOffset(playerPos)));\n\n'
           '// Attach a 3D source:\n'
-          'source.addComponent(TransformComponent(position: emitterPos));\n'
+          'source.addComponent(TransformComponent(position: Vector3.fromOffset(emitterPos)));\n'
           'source.addComponent(AudioSourceComponent(\n'
           "  clipPath: 'assets/audio/ambient.ogg',\n"
           '  loop: true,\n'
@@ -2149,3 +2149,4 @@ class _AudioCanvasPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _AudioCanvasPainter old) => true;
 }
+

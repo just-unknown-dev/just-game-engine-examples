@@ -1,6 +1,6 @@
-import 'package:get_it/get_it.dart';
+import 'package:just_di/just_di.dart';
 
-final getIt = GetIt.instance;
+T getIt<T extends Object>() => JustDi.get<T>();
 
 class AppConfig {
   bool isMobile;
@@ -9,5 +9,7 @@ class AppConfig {
 }
 
 void setupDependencies() {
-  getIt.registerLazySingleton<AppConfig>(() => AppConfig());
+  if (!JustDi.isRegistered<AppConfig>()) {
+    JustDi.registerLazySingleton<AppConfig>(() => AppConfig());
+  }
 }

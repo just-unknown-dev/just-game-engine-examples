@@ -23,6 +23,25 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Secrets and API keys
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.p12
+*.jks
+*.keystore
+key.properties
+local.properties
+google-services.json
+GoogleService-Info.plist
+serviceAccountKey.json
+*-service-account*.json
+firebase.json
+firebase_options.dart
+**/firebase_options.dart
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -50,3 +69,6 @@ app.*.map.json
 
 # Monorepo packages
 /packages/
+
+# Just Game Engine Editor related
+/lib/game/

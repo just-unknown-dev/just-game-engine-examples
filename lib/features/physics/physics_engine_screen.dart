@@ -130,21 +130,23 @@ enum _Demo {
 // ECS helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PhysicsComponent extends Component {
-  _PhysicsComponent({required this.body});
-  final PhysicsBody body;
-}
-
 class _PhysicsSyncSystem extends System {
   @override
-  List<Type> get requiredComponents => [_PhysicsComponent, TransformComponent];
+  List<Type> get requiredComponents => [
+    PhysicsBodyRefComponent,
+    TransformComponent,
+  ];
 
   @override
   void update(double dt) {
     forEach((entity) {
-      final physics = entity.getComponent<_PhysicsComponent>()!;
+      final physics = entity.getComponent<PhysicsBodyRefComponent>()!;
       final transform = entity.getComponent<TransformComponent>()!;
-      transform.position = physics.body.position.toOffset();
+      transform.position = Vector3(
+        physics.body.position.x,
+        physics.body.position.y,
+        transform.position.z,
+      );
       transform.rotation = physics.body.angle;
     });
   }
@@ -209,6 +211,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   // ── State ────────────────────────────────────────────────────────────────
   _Demo _demo = _Demo.particleStorm;
   String _statusMessage = '';
+  bool _showColliderDebug = true;
 
   // ── Particle Storm settings ───────────────────────────────────────────────
   int _ballCount = 200;
@@ -229,8 +232,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
     _world = _engine.world;
     _ticker = createTicker(_onTick)..start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshArenaSize();
-      _buildDemo(_demo);
+      if (mounted) _buildDemo(_demo);
     });
   }
 
@@ -289,6 +291,15 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
 
     _world.addSystem(_PhysicsSyncSystem());
     _world.addSystem(_CameraAwareRenderSystem(_engine.rendering.camera));
+    if (_showColliderDebug) {
+      _world.addSystem(
+        ColliderDebuggerSystem(
+          camera: _engine.rendering.camera,
+          includeStaticBodies: true,
+          includeDynamicBodies: true,
+        ),
+      );
+    }
 
     switch (demo) {
       case _Demo.particleStorm:
@@ -348,8 +359,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       );
       _engine.physics.addBody(body);
       _world.createEntityWithComponents([
-        _PhysicsComponent(body: body),
-        TransformComponent(position: w.pos),
+        PhysicsBodyRefComponent(body),
+        TransformComponent(position: Vector3.fromOffset(w.pos)),
         RenderableComponent(
           renderable: RectangleRenderable(
             size: w.size,
@@ -395,8 +406,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       );
       _engine.physics.addBody(body);
       _world.createEntityWithComponents([
-        _PhysicsComponent(body: body),
-        TransformComponent(position: Offset(x, y)),
+        PhysicsBodyRefComponent(body),
+        TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: r,
@@ -453,8 +464,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       );
       _engine.physics.addBody(body);
       _world.createEntityWithComponents([
-        _PhysicsComponent(body: body),
-        TransformComponent(position: Offset(x, y)),
+        PhysicsBodyRefComponent(body),
+        TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: 9.0,
@@ -529,8 +540,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       );
       _engine.physics.addBody(body);
       _world.createEntityWithComponents([
-        _PhysicsComponent(body: body),
-        TransformComponent(position: w.pos),
+        PhysicsBodyRefComponent(body),
+        TransformComponent(position: Vector3.fromOffset(w.pos)),
         RenderableComponent(
           renderable: RectangleRenderable(
             size: w.size,
@@ -568,8 +579,10 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       );
       _engine.physics.addBody(body);
       _world.createEntityWithComponents([
-        _PhysicsComponent(body: body),
-        TransformComponent(position: Offset(x, -_halfH * 0.75)),
+        PhysicsBodyRefComponent(body),
+        TransformComponent(
+          position: Vector3.fromOffset(Offset(x, -_halfH * 0.75)),
+        ),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: 5,
@@ -644,8 +657,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         );
         _engine.physics.addBody(body);
         _world.createEntityWithComponents([
-          _PhysicsComponent(body: body),
-          TransformComponent(position: Offset(x, y)),
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
           RenderableComponent(
             renderable: CircleRenderable(
               radius: r,
@@ -671,8 +684,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         );
         _engine.physics.addBody(body);
         _world.createEntityWithComponents([
-          _PhysicsComponent(body: body),
-          TransformComponent(position: Offset(x, y)),
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
           RenderableComponent(
             renderable: RectangleRenderable(
               size: const Size(w, h),
@@ -703,8 +716,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         );
         _engine.physics.addBody(body);
         _world.createEntityWithComponents([
-          _PhysicsComponent(body: body),
-          TransformComponent(position: Offset(x, y)),
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
           RenderableComponent(
             renderable: CustomRenderable(
               layer: 5,
@@ -767,8 +780,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         );
         _engine.physics.addBody(body);
         _world.createEntityWithComponents([
-          _PhysicsComponent(body: body),
-          TransformComponent(position: Offset(x, y)),
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
           RenderableComponent(
             renderable: RectangleRenderable(
               size: const Size(blockW, blockH),
@@ -801,8 +814,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
     );
     _engine.physics.addBody(body);
     _world.createEntityWithComponents([
-      _PhysicsComponent(body: body),
-      TransformComponent(position: Offset(0, spawnY)),
+      PhysicsBodyRefComponent(body),
+      TransformComponent(position: Vector3.fromOffset(Offset(0, spawnY))),
       RenderableComponent(
         renderable: CircleRenderable(
           radius: r,
@@ -891,6 +904,27 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
               fontFamily: 'monospace',
             ),
           ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Collider Debug',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              const SizedBox(width: 6),
+              Switch(
+                value: _showColliderDebug,
+                onChanged: (v) {
+                  setState(() {
+                    _showColliderDebug = v;
+                  });
+                  _buildDemo(_demo);
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
+          ),
           if (_statusMessage.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
@@ -913,7 +947,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         key: _canvasKey,
         engine: _engine,
         showFPS: true,
-        showDebug: false,
+        showDebug: true,
       ),
     );
   }
@@ -931,7 +965,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;

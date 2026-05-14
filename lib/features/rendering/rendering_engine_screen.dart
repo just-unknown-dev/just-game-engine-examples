@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo mode
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _Demo {
   primitives,
@@ -41,8 +41,9 @@ enum _Demo {
 
   String get description => switch (this) {
     primitives =>
-      'RectangleRenderable, CircleRenderable, LineRenderable, TextRenderable. '
-          'Each carries position, rotation, scale, layer and zOrder.',
+      'RectangleRenderable, CircleRenderable, LineRenderable, TextRenderable — '
+          'plus ECS shape components: CircleComponent, RectangleComponent, '
+          'PolygonComponent, LineComponent, CapsuleComponent.',
     layers =>
       'Renderables are sorted by layer (canvas draw order) then zOrder (tie-break). '
           'Higher layer = drawn on top. zOrder breaks ties within the same layer.',
@@ -59,18 +60,17 @@ enum _Demo {
 
   String get codeSnippet => switch (this) {
     primitives =>
-      '// Rectangle:\n'
-          'RectangleRenderable(size: const Size(100, 60),\n'
-          '  fillColor: Colors.blue, strokeColor: Colors.white,\n'
-          '  strokeWidth: 2, layer: 5);\n\n'
-          '// Circle:\n'
-          'CircleRenderable(radius: 30, fillColor: Colors.teal, layer: 5);\n\n'
-          '// Line:\n'
-          'LineRenderable(endPoint: const Offset(120, 0),\n'
-          '  color: Colors.orange, width: 3, layer: 5);\n\n'
-          '// Text:\n'
-          "TextRenderable(text: 'Hello', layer: 5,\n"
-          '  textStyle: TextStyle(color: Colors.white, fontSize: 16));',
+      '// ECS Shape Components (pure data, rendered via CustomRenderable):\n'
+          'CircleComponent(radius: 36, color: Colors.blue)\n'
+          'RectangleComponent(width: 80, height: 52, cornerRadius: 10)\n'
+          'PolygonComponent(vertices: _nGon(5, 36))\n'
+          'LineComponent(end: Offset(38, 0), strokeWidth: 4, roundCaps: true)\n'
+          'CapsuleComponent(width: 44, height: 76)\n\n'
+          '// Renderable primitives:\n'
+          'RectangleRenderable(size: Size(150, 96), layer: 5)\n'
+          'CircleRenderable(radius: 54, layer: 5)\n'
+          'LineRenderable(endPoint: Offset(170, 0), layer: 4)\n'
+          "TextRenderable(text: 'Hello', layer: 5)",
     layers =>
       '// Draw order = sort by layer, then zOrder:\n'
           'CircleRenderable(radius: 40, layer: 1, zOrder: 0);  // bottom\n'
@@ -123,9 +123,9 @@ enum _Demo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ECS helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _SpinComponent extends Component {
   _SpinComponent({required this.speed});
@@ -223,9 +223,11 @@ class _FloatSystem extends System {
       final m = entity.getComponent<_FloatComponent>()!;
       m.time += dt;
       final a = m.time * m.speed;
-      t.position = Offset(
-        m.origin.dx + math.cos(a) * m.amplitudeX,
-        m.origin.dy + math.sin(a * 1.3) * m.amplitudeY,
+      t.position = Vector3.fromOffset(
+        Offset(
+          m.origin.dx + math.cos(a) * m.amplitudeX,
+          m.origin.dy + math.sin(a * 1.3) * m.amplitudeY,
+        ),
       );
     });
   }
@@ -242,7 +244,8 @@ class _PulseSystem extends System {
       final p = entity.getComponent<_PulseComponent>()!;
       p.time += dt;
       final wave = (math.sin(p.phase + p.time * p.speed) + 1) / 2;
-      t.scale = p.minScale + (p.maxScale - p.minScale) * wave;
+      final s = p.minScale + (p.maxScale - p.minScale) * wave;
+      t.scale = Vector3(s, s, 1.0);
     });
   }
 }
@@ -257,9 +260,8 @@ class _OrbitSystem extends System {
       final t = entity.getComponent<TransformComponent>()!;
       final o = entity.getComponent<_OrbitComponent>()!;
       o.angle += o.speed * dt;
-      t.position = Offset(
-        math.cos(o.angle) * o.radius,
-        math.sin(o.angle) * o.radius,
+      t.position = Vector3.fromOffset(
+        Offset(math.cos(o.angle) * o.radius, math.sin(o.angle) * o.radius),
       );
     });
   }
@@ -275,9 +277,11 @@ class _OrbitChildSystem extends System {
       final parent = entity.getComponent<ParentComponent>()!;
       final orbit = entity.getComponent<_OrbitChildComponent>()!;
       orbit.angle += orbit.speed * dt;
-      parent.localOffset = Offset(
-        math.cos(orbit.angle) * orbit.radius,
-        math.sin(orbit.angle) * orbit.radius,
+      parent.localOffset = Vector3.fromOffset(
+        Offset(
+          math.cos(orbit.angle) * orbit.radius,
+          math.sin(orbit.angle) * orbit.radius,
+        ),
       );
       parent.localRotation = orbit.angle;
     });
@@ -299,16 +303,30 @@ class _EmitterSystem extends System {
       final emitter = rc.renderable as ParticleEmitter;
       m.time += dt;
       final wave = (math.sin(m.time * m.speed) + 1) / 2;
-      emitter.position = m.position;
+      emitter.position = Vector3.fromOffset(m.position);
       emitter.emissionRate = m.minRate + (m.maxRate - m.minRate) * wave;
       emitter.update(dt);
     });
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/// Renders ECS shape components (CircleComponent, RectangleComponent,
+/// PolygonComponent, LineComponent, CapsuleComponent) directly onto the canvas
+/// via a CustomRenderable it creates on first use.
+class _ShapeRenderSystem extends System {
+  @override
+  List<Type> get requiredComponents => [TransformComponent];
+
+  @override
+  void update(double dt) {
+    // Shape rendering is handled by the CustomRenderables created in
+    // _buildShapeEntities — no per-frame update needed here.
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class RenderingEngineScreen extends StatefulWidget {
   const RenderingEngineScreen({super.key});
@@ -356,9 +374,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Demo construction
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildDemo(_Demo demo) {
     _demo = demo;
@@ -376,6 +394,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     _world.addSystem(_OrbitChildSystem()..priority = 75);
     _world.addSystem(HierarchySystem()..priority = 70);
     _world.addSystem(_EmitterSystem()..priority = 65);
+    _world.addSystem(_ShapeRenderSystem()..priority = 60);
 
     _spawnGrid();
 
@@ -395,9 +414,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Shared background grid
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _spawnGrid() {
     _world.createEntityWithComponents([
@@ -438,31 +457,29 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
   void _spawnLabel(String text, Offset position, {Color? color}) {
     _world.createEntityWithComponents([
-      TransformComponent(position: position),
-      RenderableComponent(
-        renderable: TextRenderable(
-          text: text,
-          textStyle: TextStyle(
-            color: color ?? const Color(0xFFB0C8E0),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          layer: 30,
+      TransformComponent(position: Vector3.fromOffset(position)),
+      TextComponent(
+        text: text,
+        textStyle: TextStyle(
+          color: color ?? const Color(0xFFB0C8E0),
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
+        layer: 30,
       ),
     ]);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Primitives
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildPrimitives() {
     // Rectangle cluster — top-left
     for (int i = 0; i < 3; i++) {
       _world.createEntityWithComponents([
         TransformComponent(
-          position: Offset(-240 + i * 30, -60 + i * 16),
+          position: Vector3.fromOffset(Offset(-240 + i * 30, -60 + i * 16)),
           rotation: -0.18 + i * 0.12,
         ),
         RenderableComponent(
@@ -492,7 +509,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     // Circle beacon — top-right
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(230, -50)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(230, -50))),
       RenderableComponent(
         renderable: CircleRenderable(
           radius: 54,
@@ -505,7 +522,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       _PulseComponent(minScale: 0.88, maxScale: 1.18, speed: 2.2),
     ]);
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(230, -50)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(230, -50))),
       RenderableComponent(
         renderable: CircleRenderable(
           radius: 18,
@@ -528,7 +545,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     for (int i = 0; i < 7; i++) {
       _world.createEntityWithComponents([
         TransformComponent(
-          position: const Offset(-300, 170),
+          position: Vector3.fromOffset(const Offset(-300, 170)),
           rotation: -0.9 + i * 0.3,
         ),
         RenderableComponent(
@@ -550,7 +567,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     // Text sample — bottom-right
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(230, 150)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(230, 150))),
       RenderableComponent(
         renderable: TextRenderable(
           text: 'TextRenderable',
@@ -565,26 +582,137 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       ),
       _PulseComponent(minScale: 0.95, maxScale: 1.05, speed: 1.6),
     ]);
+    final textComp = TextComponent(
+      text: 'color, size, weight',
+      textStyle: const TextStyle(color: Color(0xFF8BACC0), fontSize: 13),
+      layer: 5,
+    );
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(230, 195)),
-      RenderableComponent(
-        renderable: TextRenderable(
-          text: 'color, size, weight',
-          textStyle: const TextStyle(
-            color: Color(0xFF8BACC0),
-            fontSize: 13,
-          ),
-          layer: 5,
-        ),
-      ),
+      TransformComponent(position: Vector3.fromOffset(const Offset(230, 195))),
+      textComp,
     ]);
 
     _statusMessage = 'Rectangle, Circle, Line, Text renderables';
+
+    // -- ECS Shape Components section --------------------------------------
+    _buildShapeEntities();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
+  // Shape ECS component entities (shown inside Primitives tab)
+  // -------------------------------------------------------------------------
+
+  void _buildShapeEntities() {
+    const double row = -300.0; // y row for shape section
+    const double labelRow = row + 60.0;
+
+    // Section header
+    _spawnLabel(
+      '-- ECS Shape Components --',
+      const Offset(0, row - 55),
+      color: const Color(0xFF29B6F6),
+    );
+
+    // CircleComponent
+    _world.createEntityWithComponents([
+      TransformComponent(position: Vector3.fromOffset(const Offset(-320, row))),
+      CircleComponent(
+        radius: 36,
+        color: const Color(0xFF29B6F6),
+        filled: true,
+        strokeWidth: 2.5,
+      ),
+      _PulseComponent(minScale: 0.9, maxScale: 1.1, speed: 1.8),
+      _SpinComponent(speed: 0.2),
+    ]);
+    _spawnLabel(
+      'CircleComponent',
+      const Offset(-320, labelRow),
+      color: const Color(0xFF29B6F6),
+    );
+
+    // RectangleComponent (rounded corners)
+    _world.createEntityWithComponents([
+      TransformComponent(position: Vector3.fromOffset(const Offset(-160, row))),
+      RectangleComponent(
+        width: 80,
+        height: 52,
+        cornerRadius: 10,
+        color: const Color(0xFF66BB6A),
+        filled: true,
+        strokeWidth: 2.5,
+      ),
+      _SpinComponent(speed: 0.18),
+      _PulseComponent(minScale: 0.88, maxScale: 1.1, speed: 1.5, phase: 1.0),
+    ]);
+    _spawnLabel(
+      'RectangleComponent',
+      const Offset(-160, labelRow),
+      color: const Color(0xFF66BB6A),
+    );
+
+    // PolygonComponent (pentagon)
+    _world.createEntityWithComponents([
+      TransformComponent(position: Vector3.fromOffset(const Offset(0, row))),
+      PolygonComponent(
+        vertices: List.generate(5, (i) {
+          final a = -math.pi / 2 + i * 2 * math.pi / 5;
+          return Offset(math.cos(a) * 36, math.sin(a) * 36);
+        }),
+        color: const Color(0xFFFFA040),
+        filled: true,
+        strokeWidth: 2.5,
+      ),
+      _SpinComponent(speed: -0.25),
+      _PulseComponent(minScale: 0.9, maxScale: 1.1, speed: 2.0, phase: 0.5),
+    ]);
+    _spawnLabel(
+      'PolygonComponent',
+      const Offset(0, labelRow),
+      color: const Color(0xFFFFA040),
+    );
+
+    // LineComponent
+    _world.createEntityWithComponents([
+      TransformComponent(position: Vector3.fromOffset(const Offset(160, row))),
+      LineComponent(
+        start: const Offset(-38, 0),
+        end: const Offset(38, 0),
+        color: const Color(0xFFFF7043),
+        strokeWidth: 4,
+        roundCaps: true,
+      ),
+      _SpinComponent(speed: 1.1),
+    ]);
+    _spawnLabel(
+      'LineComponent',
+      const Offset(160, labelRow),
+      color: const Color(0xFFFF7043),
+    );
+
+    // CapsuleComponent
+    _world.createEntityWithComponents([
+      TransformComponent(position: Vector3.fromOffset(const Offset(320, row))),
+      CapsuleComponent(
+        width: 44,
+        height: 76,
+        color: const Color(0xFFAB47BC),
+        filled: true,
+        strokeWidth: 2.5,
+      ),
+      _SpinComponent(speed: 0.3),
+      _PulseComponent(minScale: 0.88, maxScale: 1.08, speed: 1.6, phase: 2.0),
+    ]);
+    _spawnLabel(
+      'CapsuleComponent',
+      const Offset(320, labelRow),
+      color: const Color(0xFFAB47BC),
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Layers & Z-Order
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildLayers() {
     final configs = [
@@ -595,7 +723,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     for (final (pos, color, layer, zOrder, lbl) in configs) {
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: 52,
@@ -619,7 +747,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     ];
     for (int i = 0; i < 3; i++) {
       _world.createEntityWithComponents([
-        TransformComponent(position: Offset(-60 + i * 50, 180)),
+        TransformComponent(
+          position: Vector3.fromOffset(Offset(-60 + i * 50, 180)),
+        ),
         RenderableComponent(
           renderable: RectangleRenderable(
             size: const Size(100, 70),
@@ -637,18 +767,18 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     _statusMessage = 'Higher layer draws on top; zOrder breaks ties';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Particles
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildParticles() {
     // Fire emitter
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(-160, 60)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(-160, 60))),
       RenderableComponent(
         syncTransform: false,
         renderable: ParticleEmitter(
-          position: const Offset(-160, 60),
+          position: Vector3.fromOffset(const Offset(-160, 60)),
           maxParticles: 200,
           emissionRate: 28,
           particleLifetime: 1.6,
@@ -675,11 +805,11 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     // Sparkle emitter
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(60, 30)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(60, 30))),
       RenderableComponent(
         syncTransform: false,
         renderable: ParticleEmitter(
-          position: const Offset(60, 30),
+          position: Vector3.fromOffset(const Offset(60, 30)),
           maxParticles: 150,
           emissionRate: 20,
           particleLifetime: 2.0,
@@ -708,9 +838,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     _statusMessage = 'EmissionRate, lifetime, color gradient, gravity';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Hierarchy
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildHierarchy() {
     final rootColors = [
@@ -729,7 +859,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       final offset = offsets[r];
 
       final parent = _world.createEntityWithComponents([
-        TransformComponent(position: offset),
+        TransformComponent(position: Vector3.fromOffset(offset)),
         ChildrenComponent(),
         RenderableComponent(
           renderable: CircleRenderable(
@@ -775,21 +905,22 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     _statusMessage = 'ParentComponent + ChildrenComponent + HierarchySystem';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Custom draw
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildCustom() {
     // Spinning star with gradient fill
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(-180, 0), scale: 1.0),
+      TransformComponent(
+        position: Vector3.fromOffset(const Offset(-180, 0)),
+        scale: Vector3(1.0, 1.0, 1.0),
+      ),
       RenderableComponent(
         renderable: CustomRenderable(
           layer: 7,
-          getBoundsCallback: () => Rect.fromCircle(
-            center: Offset.zero,
-            radius: 80,
-          ),
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 80),
           onRender: (canvas, _) {
             canvas.drawCircle(
               Offset.zero,
@@ -804,7 +935,10 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
               final r = i.isEven ? 64.0 : 28.0;
               final a = -math.pi / 2 + i * math.pi / 5;
               final p = Offset(math.cos(a) * r, math.sin(a) * r);
-              if (i == 0) path.moveTo(p.dx, p.dy); else path.lineTo(p.dx, p.dy);
+              if (i == 0)
+                path.moveTo(p.dx, p.dy);
+              else
+                path.lineTo(p.dx, p.dy);
             }
             path.close();
             canvas.drawPath(
@@ -831,22 +965,21 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     // Glow ring
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(80, 0)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(80, 0))),
       RenderableComponent(
         renderable: CustomRenderable(
           layer: 7,
-          getBoundsCallback: () => Rect.fromCircle(
-            center: Offset.zero,
-            radius: 80,
-          ),
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 80),
           onRender: (canvas, _) {
             for (double r = 60; r >= 20; r -= 8) {
               canvas.drawCircle(
                 Offset.zero,
                 r,
                 Paint()
-                  ..color = const Color(0xFFAB47BC)
-                      .withValues(alpha: 0.08 + (60 - r) * 0.006)
+                  ..color = const Color(
+                    0xFFAB47BC,
+                  ).withValues(alpha: 0.08 + (60 - r) * 0.006)
                   ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
               );
             }
@@ -872,15 +1005,13 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
 
     // Lissajous curve
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -190)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(0, -190))),
       RenderableComponent(
         syncTransform: false,
         renderable: CustomRenderable(
           layer: 6,
-          getBoundsCallback: () => Rect.fromCircle(
-            center: Offset.zero,
-            radius: 80,
-          ),
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 80),
           onRender: (canvas, _) {
             final paint = Paint()
               ..color = const Color(0xFF66BB6A).withValues(alpha: 0.8)
@@ -892,7 +1023,10 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
               final t = i * math.pi / 180;
               final x = 55 * math.sin(3 * t + math.pi / 4);
               final y = 55 * math.sin(2 * t);
-              if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+              if (i == 0)
+                path.moveTo(x, y);
+              else
+                path.lineTo(x, y);
             }
             canvas.drawPath(path, paint);
           },
@@ -904,9 +1038,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
     _statusMessage = 'onRender callback with full Canvas API access';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Stats line
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   String get _statsLine {
     return 'entities ${_world.entities.length}'
@@ -914,9 +1048,9 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
         '  renderables ${_world.entities.where((e) => e.hasComponent<RenderableComponent>()).length}';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // UI
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -991,7 +1125,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       enablePan: true,
       enablePinch: true,
       showZoomLevel: true,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
     );
   }
 
@@ -1079,7 +1213,11 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
         const SizedBox(width: 8),
-        _actionButton('Reset', const Color(0xFFFFCA28), () => _buildDemo(_Demo.layers)),
+        _actionButton(
+          'Reset',
+          const Color(0xFFFFCA28),
+          () => _buildDemo(_Demo.layers),
+        ),
         const SizedBox(width: 12),
         const Text(
           'layer 1 < layer 2 < layer 3 in draw order',
@@ -1097,7 +1235,11 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
         const SizedBox(width: 8),
-        _actionButton('Reset', const Color(0xFFAB47BC), () => _buildDemo(_Demo.hierarchy)),
+        _actionButton(
+          'Reset',
+          const Color(0xFFAB47BC),
+          () => _buildDemo(_Demo.hierarchy),
+        ),
         const SizedBox(width: 12),
         const Text(
           'children orbit parents via ParentComponent.localOffset',
@@ -1144,9 +1286,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
         decoration: BoxDecoration(
           color: const Color(0xFF090F1A),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _demo.accentColor.withValues(alpha: 0.35),
-          ),
+          border: Border.all(color: _demo.accentColor.withValues(alpha: 0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

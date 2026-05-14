@@ -137,7 +137,9 @@ class _BounceSystem extends System {
           b.position.dy.clamp(b.bounds.top, b.bounds.bottom),
         );
       }
-      entity.getComponent<TransformComponent>()!.position = b.position;
+      entity.getComponent<TransformComponent>()!.position = Vector3.fromOffset(
+        b.position,
+      );
     }
   }
 }
@@ -558,7 +560,7 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
       enablePan: true,
       enablePinch: true,
       showZoomLevel: true,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
     );
   }
 

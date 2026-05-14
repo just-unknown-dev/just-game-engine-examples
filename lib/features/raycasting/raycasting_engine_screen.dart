@@ -3,10 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_physics_engine/just_physics_engine.dart' show Ray;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo mode
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _Demo {
   shoot,
@@ -112,9 +113,9 @@ enum _Demo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ECS Components
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _PhysicsComponent extends Component {
   _PhysicsComponent({required this.body});
@@ -142,9 +143,9 @@ class _ScanResultComponent extends Component {
   set hitFraction(double v) => _hitFraction = v;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ECS Systems
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _PhysicsSyncSystem extends System {
   @override
@@ -155,7 +156,7 @@ class _PhysicsSyncSystem extends System {
     forEach((entity) {
       final physics = entity.getComponent<_PhysicsComponent>()!;
       final transform = entity.getComponent<TransformComponent>()!;
-      transform.position = physics.body.position.toOffset();
+      transform.position = Vector3.fromOffset(physics.body.position.toOffset());
       transform.rotation = physics.body.angle;
     });
   }
@@ -180,9 +181,9 @@ class _RayVisualSystem extends System {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class RaycastingEngineScreen extends StatefulWidget {
   const RaycastingEngineScreen({super.key});
@@ -193,34 +194,34 @@ class RaycastingEngineScreen extends StatefulWidget {
 
 class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     with SingleTickerProviderStateMixin {
-  // ── Engine ──────────────────────────────────────────────────────────────
+  // -- Engine --------------------------------------------------------------
   late final Engine _engine;
   late final World _world;
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
 
-  // ── Demo ─────────────────────────────────────────────────────────────────
+  // -- Demo -----------------------------------------------------------------
   _Demo _demo = _Demo.shoot;
   String _statusMessage = '';
 
-  // ── Raycasting ───────────────────────────────────────────────────────────
+  // -- Raycasting -----------------------------------------------------------
   late RaycastSystem _raycastSystem;
   RayTracer? _rayTracer;
 
-  // ── Shoot demo ───────────────────────────────────────────────────────────
+  // -- Shoot demo -----------------------------------------------------------
   PhysicsBody? _playerBody;
   int _enemiesDestroyed = 0;
   int _totalEnemies = 10;
 
-  // ── Scanner demo ─────────────────────────────────────────────────────────
+  // -- Scanner demo ---------------------------------------------------------
   int _scannerDegrees = 30;
 
-  // ── GameWidget key ───────────────────────────────────────────────────────
+  // -- GameWidget key -------------------------------------------------------
   final GlobalKey _gameWidgetKey = GlobalKey();
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   void initState() {
@@ -247,9 +248,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Tick
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _onTick(Duration elapsed) {
     if (_lastTick == Duration.zero) {
@@ -278,9 +279,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Demo builder
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildDemo(_Demo demo) {
     _demo = demo;
@@ -296,6 +297,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     _world.addSystem(_PhysicsSyncSystem());
     _world.addSystem(_raycastSystem);
     _world.addSystem(_RayVisualSystem());
+    _world.addSystem(ColliderDebuggerSystem(camera: _engine.rendering.camera));
     _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
 
     _engine.rendering.camera.position = Offset.zero;
@@ -317,9 +319,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Shared helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   Size get _viewportSize {
     final ro = _gameWidgetKey.currentContext?.findRenderObject();
@@ -382,7 +384,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     // Static entities need no physics body — transform position is set once
     // and never overwritten, which is all RaycastSystem and RenderSystem need.
     return _world.createEntityWithComponents([
-      TransformComponent(position: position),
+      TransformComponent(position: Vector3.fromOffset(position)),
       RenderableComponent(
         renderable: CircleRenderable(
           radius: radius,
@@ -414,7 +416,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     String? tag,
   }) {
     _world.createEntityWithComponents([
-      TransformComponent(position: position),
+      TransformComponent(position: Vector3.fromOffset(position)),
       RenderableComponent(
         renderable: CustomRenderable(
           layer: 3,
@@ -459,7 +461,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     int lifetime = 220,
   }) {
     _world.createEntityWithComponents([
-      TransformComponent(position: from),
+      TransformComponent(position: Vector3.fromOffset(from)),
       RenderableComponent(
         renderable: LineRenderable(
           endPoint: to - from,
@@ -472,9 +474,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     ]);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Shoot demo
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildShoot() {
     _totalEnemies = 12;
@@ -551,9 +553,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Line of Sight demo
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildLos() {
     _spawnBackground();
@@ -625,7 +627,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
         .where((e) => e.hasComponent<_TargetTagComponent>())
         .toList();
     for (final t in targets) {
-      final pos = t.getComponent<TransformComponent>()!.position;
+      final pos = t.getComponent<TransformComponent>()!.position.toOffset();
       final clear = _raycastSystem.hasLineOfSight(
         playerPos,
         pos,
@@ -639,9 +641,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Reflection demo
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildReflect() {
     _spawnBackground();
@@ -712,9 +714,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Ray Tracer demo
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildTracer() {
     _spawnBackground();
@@ -788,9 +790,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Scanner demo
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildScanner() {
     _spawnBackground();
@@ -859,9 +861,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Stats line
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   String get _statsLine {
     final entities = _world.entities.length;
@@ -872,9 +874,9 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
         '  zoom ${cam.zoom.toStringAsFixed(2)}';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // UI
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -957,7 +959,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
           key: _gameWidgetKey,
           engine: _engine,
           showFPS: true,
-          showDebug: false,
+          showDebug: true,
         ),
       ),
     );

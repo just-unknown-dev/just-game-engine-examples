@@ -160,9 +160,11 @@ class _OrbitSystem extends System {
       if (!e.isActive) continue;
       final o = e.getComponent<_OrbitComponent>()!;
       o.angle += dt * o.speed;
-      e.getComponent<TransformComponent>()!.position = Offset(
-        o.center.dx + math.cos(o.angle) * o.radius,
-        o.center.dy + math.sin(o.angle) * o.radius,
+      e.getComponent<TransformComponent>()!.position = Vector3.fromOffset(
+        Offset(
+          o.center.dx + math.cos(o.angle) * o.radius,
+          o.center.dy + math.sin(o.angle) * o.radius,
+        ),
       );
     }
   }
@@ -179,9 +181,10 @@ class _BobSystem extends System {
       final b = e.getComponent<_BobComponent>()!;
       b.time += dt;
       final t = e.getComponent<TransformComponent>()!;
-      t.position = Offset(
-        t.position.dx,
+      t.position = Vector3(
+        t.position.x,
         b.originY + math.sin(b.time * b.speed + b.phase) * b.amplitude,
+        t.position.z,
       );
     }
   }
@@ -522,7 +525,7 @@ class _ShaderScreenState extends State<ShaderScreen>
     ];
     for (final (pos, r, color) in pads) {
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: 3,
@@ -588,7 +591,9 @@ class _ShaderScreenState extends State<ShaderScreen>
       );
 
       final entity = _world.createEntity();
-      entity.addComponent(TransformComponent(position: pos));
+      entity.addComponent(
+        TransformComponent(position: Vector3.fromOffset(pos)),
+      );
       entity.addComponent(_FlashComponent(decayRate: 1.8));
       entity.addComponent(
         RenderableComponent(
@@ -737,7 +742,7 @@ class _ShaderScreenState extends State<ShaderScreen>
       );
 
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: 2,
@@ -826,7 +831,7 @@ class _ShaderScreenState extends State<ShaderScreen>
       final y = -60 + rng.nextDouble() * 130.0;
       final len = 14.0 + rng.nextDouble() * 10;
       _world.createEntityWithComponents([
-        TransformComponent(position: Offset(x, y)),
+        TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: 5,
@@ -956,7 +961,7 @@ class _ShaderScreenState extends State<ShaderScreen>
   Widget _buildCanvas() {
     return CameraZoomControls(
       camera: _engine.rendering.camera,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
     );
   }
 

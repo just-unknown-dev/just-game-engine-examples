@@ -202,7 +202,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
       final transform = _playerEntity!.getComponent<TransformComponent>();
       if (transform != null) {
         _engine.rendering.camera.follow(
-          transform.position,
+          transform.position.toOffset(),
           deadZone: const Offset(20, 20),
           smooth: true,
         );
@@ -368,6 +368,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
     }
     _world.addSystem(_PlayerAnimationSystem()..priority = 90);
     _world.addSystem(MovementSystem()..priority = 80);
+    _world.addSystem(ColliderDebuggerSystem(camera: camera)..priority = 50);
     _world.addSystem(_CameraAwareRenderSystem(camera)..priority = 40);
 
     final spawnedEntities = TiledMapFactory.spawnMap(
@@ -424,7 +425,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
           objName == 'start' ||
           objName == 'player_start' ||
           objName == 'player') {
-        if (transform != null) foundStart = transform.position;
+        if (transform != null) foundStart = transform.position.toOffset();
       }
 
       if ((objType == 'collider' ||
@@ -488,7 +489,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
     );
 
     _playerEntity = _world.createEntityWithComponents([
-      TransformComponent(position: _playerStartPosition),
+      TransformComponent(position: Vector3.fromOffset(_playerStartPosition)),
       VelocityComponent(maxSpeed: _playerSpeed),
       InputComponent(),
       _joystickComponent!,
@@ -526,7 +527,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
       ..smoothingFactor = 0.08;
     if (_playerEntity != null) {
       final pos = _playerEntity!.getComponent<TransformComponent>()?.position;
-      if (pos != null) _engine.rendering.camera.position = pos;
+      if (pos != null) _engine.rendering.camera.position = pos.toOffset();
     }
     setState(() => _statusMessage = 'Camera reset');
   }
@@ -538,8 +539,8 @@ class _TiledMapScreenState extends State<TiledMapScreen>
   String get _statsLine {
     if (_loading) return _statusMessage;
     final pos = _playerEntity?.getComponent<TransformComponent>()?.position;
-    final px = pos?.dx.toStringAsFixed(0) ?? '?';
-    final py = pos?.dy.toStringAsFixed(0) ?? '?';
+    final px = pos?.x.toStringAsFixed(0) ?? '?';
+    final py = pos?.y.toStringAsFixed(0) ?? '?';
     return 'map: ${_mapWidth}×$_mapHeight tiles (${_tileWidth}×${_tileHeight} px)'
         '  objects: $_objectCount  colliders: $_colliderCount'
         '  player: ($px, $py)';
@@ -651,7 +652,7 @@ class _TiledMapScreenState extends State<TiledMapScreen>
               key: _gameWidgetKey,
               engine: _engine,
               showFPS: true,
-              showDebug: false,
+              showDebug: true,
             ),
           ),
         ),
@@ -1007,12 +1008,13 @@ class _PlayerAnimationSystem extends System {
       // Apply velocity
       if (isMoving) {
         final normalized = dir.distance > 1.0 ? dir / dir.distance : dir;
-        velocity.velocity = Offset(
+        velocity.velocity = Vector3(
           normalized.dx * velocity.maxSpeed,
           normalized.dy * velocity.maxSpeed,
+          velocity.velocity.z,
         );
       } else {
-        velocity.velocity = Offset.zero;
+        velocity.velocity = Vector3(0, 0, velocity.velocity.z);
       }
 
       final prefix = isMoving ? 'run' : 'idle';

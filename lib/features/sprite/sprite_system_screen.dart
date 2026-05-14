@@ -4,9 +4,9 @@ import 'package:just_game_engine/just_game_engine.dart';
 
 import '../../core/widgets/camera_zoom_controls.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo mode
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _SpriteDemo {
   environment,
@@ -82,9 +82,9 @@ enum _SpriteDemo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class SpriteSystemScreen extends StatefulWidget {
   const SpriteSystemScreen({super.key});
@@ -129,9 +129,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
   String _houseArtist = '';
   String _houseSource = '';
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   void initState() {
@@ -150,9 +150,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Loading
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     setState(() => _loading = true);
@@ -163,7 +163,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
   }
 
   Future<void> _loadAtlases() async {
-    // ── Houses ────────────────────────────────────────────────────────────
+    // -- Houses ------------------------------------------------------------
     final houseJson =
         (await _engine.assets.loadJson('$_houseRoot/info.json')).data
             as Map<String, dynamic>;
@@ -209,7 +209,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
       regions: houseRegions,
     );
 
-    // ── Character02: single-page idle atlas ───────────────────────────────
+    // -- Character02: single-page idle atlas -------------------------------
     final c02Json =
         (await _engine.assets.loadJson('$_char02Root/info.json')).data
             as Map<String, dynamic>;
@@ -258,7 +258,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
       },
     );
 
-    // ── Character03: 8-page multi-direction atlas ─────────────────────────
+    // -- Character03: 8-page multi-direction atlas -------------------------
     final c03Json =
         (await _engine.assets.loadJson('$_char03Root/info.json')).data
             as Map<String, dynamic>;
@@ -317,9 +317,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Tick
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _onTick(Duration elapsed) {
     if (_lastTick == Duration.zero) {
@@ -332,9 +332,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Demo construction
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildDemo(_SpriteDemo demo) {
     if (_houseAtlas == null || _char02Atlas == null || _char03Atlas == null) {
@@ -367,7 +367,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
     if (mounted) setState(() {});
   }
 
-  // ── Environment demo ──────────────────────────────────────────────────────
+  // -- Environment demo ------------------------------------------------------
 
   void _buildEnvironmentDemo() {
     final atlas = _houseAtlas!;
@@ -384,16 +384,20 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
       final pos = Offset(startX + i * spacing, 0);
 
       final sprite = atlas.createSprite(name, scale: _envScale, layer: 8);
-      sprite.position = pos;
+      sprite.position = Vector3.fromOffset(pos);
 
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(syncTransform: true, renderable: sprite),
       ], name: name);
 
       // Label below
       _world.createEntityWithComponents([
-        TransformComponent(position: Offset(pos.dx, pos.dy + renderH / 2 + 20)),
+        TransformComponent(
+          position: Vector3.fromOffset(
+            Offset(pos.dx, pos.dy + renderH / 2 + 20),
+          ),
+        ),
         RenderableComponent(
           renderable: TextRenderable(
             text:
@@ -411,7 +415,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
 
     // Credit
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -220)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(0, -220))),
       RenderableComponent(
         renderable: TextRenderable(
           text: 'artist: $_houseArtist  •  source: $_houseSource',
@@ -457,7 +461,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
     ], name: 'backdrop');
   }
 
-  // ── Atlas Inspector demo ──────────────────────────────────────────────────
+  // -- Atlas Inspector demo --------------------------------------------------
 
   void _buildAtlasInspectorDemo() {
     final atlas = _char02Atlas!;
@@ -547,7 +551,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
         'scale: ${scale.toStringAsFixed(1)}x';
   }
 
-  // ── Characters demo ───────────────────────────────────────────────────────
+  // -- Characters demo -------------------------------------------------------
 
   void _buildCharactersDemo() {
     final atlas = _char03Atlas!;
@@ -594,10 +598,10 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
       final col = i % cols;
       final row = i ~/ cols;
       final pos = Offset(startX + col * sx, startY + row * sy);
-      sprite.position = pos;
+      sprite.position = Vector3.fromOffset(pos);
 
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(syncTransform: true, renderable: sprite),
       ], name: 'char-$clipName');
 
@@ -605,9 +609,11 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
       final region = atlas.getRegion(firstRegion)!;
       _world.createEntityWithComponents([
         TransformComponent(
-          position: Offset(
-            pos.dx,
-            pos.dy + region.sourceSize.height * _charScale / 2 + 14,
+          position: Vector3.fromOffset(
+            Offset(
+              pos.dx,
+              pos.dy + region.sourceSize.height * _charScale / 2 + 14,
+            ),
           ),
         ),
         RenderableComponent(
@@ -630,9 +636,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
         'showing first frame of each clip';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   Size _readViewportSize() {
     final ro = _gameWidgetKey.currentContext?.findRenderObject();
@@ -650,9 +656,9 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
         '|  char03 ${c3.regionCount} regions · ${c3.pages.length} pages';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // UI
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -743,7 +749,7 @@ class _SpriteSystemScreenState extends State<SpriteSystemScreen>
         key: _gameWidgetKey,
         engine: _engine,
         showFPS: true,
-        showDebug: false,
+        showDebug: true,
       ),
     );
   }

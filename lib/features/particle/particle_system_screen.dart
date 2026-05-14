@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo enum
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _Demo {
   presets,
@@ -223,9 +223,9 @@ enum _Demo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Impact type
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _ImpactType {
   confetti,
@@ -241,9 +241,9 @@ enum _ImpactType {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Custom effect — spiral orbit using customData
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _SpiralEffect extends ParticleEffect {
   final Offset center;
@@ -272,9 +272,9 @@ class _SpiralEffect extends ParticleEffect {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Custom effect — rainbow spawn colors (extends onSpawn)
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _RainbowEffect extends ParticleEffect {
   static final _rng = math.Random();
@@ -297,9 +297,9 @@ class _RainbowEffect extends ParticleEffect {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class ParticleSystemScreen extends StatefulWidget {
   const ParticleSystemScreen({super.key});
@@ -310,21 +310,23 @@ class ParticleSystemScreen extends StatefulWidget {
 
 class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     with SingleTickerProviderStateMixin {
-  // ── Engine ────────────────────────────────────────────────────────────────
+  Vector3 _v3(Offset o) => Vector3.fromOffset(o);
+
+  // -- Engine ----------------------------------------------------------------
   late final Engine _engine;
   late final World _world;
   late final Ticker _ticker;
 
   Duration _lastTick = Duration.zero;
 
-  // ── UI state ──────────────────────────────────────────────────────────────
+  // -- UI state --------------------------------------------------------------
   _Demo _demo = _Demo.presets;
   String _statusMessage = '';
 
-  // ── Managed emitters ──────────────────────────────────────────────────────
+  // -- Managed emitters ------------------------------------------------------
   final List<ParticleEmitter> _emitters = [];
 
-  // ── Forces demo ───────────────────────────────────────────────────────────
+  // -- Forces demo -----------------------------------------------------------
   ParticleEmitter? _forcesEmitter;
 
   final GravityForce _gravityForce = GravityForce(const Offset(0, 140));
@@ -361,14 +363,14 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   );
   final Set<String> _activeForces = {};
 
-  // ── Impact demo ───────────────────────────────────────────────────────────
+  // -- Impact demo -----------------------------------------------------------
   _ImpactType _selectedImpact = _ImpactType.confetti;
 
-  // ── Sub-emitter demo ──────────────────────────────────────────────────────
+  // -- Sub-emitter demo ------------------------------------------------------
   bool _fireworkReady = true;
   bool _cometReady = true;
 
-  // ── Interactive demo ──────────────────────────────────────────────────────
+  // -- Interactive demo ------------------------------------------------------
   int _interactivePreset = 0;
   ParticleEmitter? _streamEmitter;
 
@@ -382,9 +384,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
 
   final math.Random _rng = math.Random();
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   void initState() {
@@ -406,9 +408,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Tick
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _onTick(Duration elapsed) {
     if (_lastTick == Duration.zero) {
@@ -422,9 +424,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Demo management
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _clearDemo() {
     for (final e in _emitters) {
@@ -468,9 +470,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Shared helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _spawnBackgroundGrid() {
     _world.createEntityWithComponents([
@@ -522,7 +524,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     double fontSize = 12,
   }) {
     _world.createEntityWithComponents([
-      TransformComponent(position: pos),
+      TransformComponent(position: Vector3.fromOffset(pos)),
       RenderableComponent(
         renderable: TextRenderable(
           text: text,
@@ -537,9 +539,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     ]);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Classic Presets
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   static const _kPresetPositions = <Offset>[
     Offset(-280, 60),
@@ -550,13 +552,13 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   ];
 
   void _buildPresets() {
-    _addEmitter(ParticleEffects.fire(position: _kPresetPositions[0]));
-    _addEmitter(ParticleEffects.smoke(position: _kPresetPositions[1]));
-    _addEmitter(ParticleEffects.sparkle(position: _kPresetPositions[2]));
+    _addEmitter(ParticleEffects.fire(position: _v3(_kPresetPositions[0])));
+    _addEmitter(ParticleEffects.smoke(position: _v3(_kPresetPositions[1])));
+    _addEmitter(ParticleEffects.sparkle(position: _v3(_kPresetPositions[2])));
     _addEmitter(
-      ParticleEffects.rain(position: _kPresetPositions[3], width: 280),
+      ParticleEffects.rain(position: _v3(_kPresetPositions[3]), width: 280),
     );
-    _addEmitter(ParticleEffects.snow(position: _kPresetPositions[4]));
+    _addEmitter(ParticleEffects.snow(position: _v3(_kPresetPositions[4])));
 
     const names = ['fire', 'smoke', 'sparkle', 'rain', 'snow'];
     for (var i = 0; i < names.length; i++) {
@@ -581,16 +583,16 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     final color = colors[_rng.nextInt(colors.length)];
     _addEmitter(
       ParticleEffects.explosion(
-        position: worldPos,
+        position: _v3(worldPos),
         color: color,
         particleCount: 60 + _rng.nextInt(60),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Advanced Presets
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   static const _kAdvancedPositions = <Offset>[
     Offset(-280, 0),
@@ -601,18 +603,22 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   ];
 
   void _buildAdvanced() {
-    _addEmitter(ParticleEffects.portal(position: _kAdvancedPositions[0]));
+    _addEmitter(ParticleEffects.portal(position: _v3(_kAdvancedPositions[0])));
     _addEmitter(
       ParticleEffects.magic(
-        position: _kAdvancedPositions[1],
+        position: _v3(_kAdvancedPositions[1]),
         color: Colors.cyanAccent,
       ),
     );
     _addEmitter(
-      ParticleEffects.electricSparks(position: _kAdvancedPositions[2]),
+      ParticleEffects.electricSparks(position: _v3(_kAdvancedPositions[2])),
     );
-    _addEmitter(ParticleEffects.healAura(position: _kAdvancedPositions[3]));
-    _addEmitter(ParticleEffects.lavaEmbers(position: _kAdvancedPositions[4]));
+    _addEmitter(
+      ParticleEffects.healAura(position: _v3(_kAdvancedPositions[3])),
+    );
+    _addEmitter(
+      ParticleEffects.lavaEmbers(position: _v3(_kAdvancedPositions[4])),
+    );
 
     const names = [
       'portal',
@@ -630,9 +636,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     _statusMessage = '5 advanced presets running simultaneously';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Impact Effects
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildImpact() {
     _statusMessage = 'Tap the canvas to trigger ${_selectedImpact.label}';
@@ -641,20 +647,20 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   void _spawnImpact(Offset worldPos) {
     final emitter = switch (_selectedImpact) {
       _ImpactType.confetti => ParticleEffects.confetti(
-        position: worldPos,
+        position: _v3(worldPos),
         count: 80,
       ),
       _ImpactType.bloodSplatter => ParticleEffects.bloodSplatter(
-        position: worldPos,
+        position: _v3(worldPos),
         count: 60,
         boundsBottom: worldPos.dy + 120,
       ),
       _ImpactType.dustKick => ParticleEffects.dustKick(
-        position: worldPos,
+        position: _v3(worldPos),
         direction: 1.0,
       ),
       _ImpactType.waterSplash => ParticleEffects.waterSplash(
-        position: worldPos,
+        position: _v3(worldPos),
         floorY: worldPos.dy + 90,
       ),
     };
@@ -667,13 +673,13 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Force Fields
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildForces() {
     final emitter = ParticleEmitter(
-      position: Offset.zero,
+      position: _v3(Offset.zero),
       maxParticles: 300,
       emissionRate: 100,
       particleLifetime: 4.0,
@@ -747,9 +753,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     _ => throw ArgumentError('Unknown force: $id'),
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Renderer Types
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   static const _kRendererPositions = <Offset>[
     Offset(-360, 0),
@@ -795,7 +801,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
       final startSize = i == 6 ? 20.0 : 10.0;
       _addEmitter(
         ParticleEmitter(
-          position: pos,
+          position: _v3(pos),
           maxParticles: 60,
           emissionRate: 25,
           particleLifetime: 2.0,
@@ -824,9 +830,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         'AnimatedSpriteParticleRenderer require a loaded ui.Image)';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Sub-Emitters
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildSubEmitters() {
     _addLabel(
@@ -846,7 +852,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     if (!_fireworkReady) return;
     setState(() => _fireworkReady = false);
     final emitter = ParticleEmitter(
-      position: const Offset(-180, 120),
+      position: _v3(const Offset(-180, 120)),
       maxParticles: 30,
       emissionRate: 0,
       particleLifetime: 1.8,
@@ -867,7 +873,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         SubEmitterConfig(
           trigger: SubEmitterTrigger.onDeath,
           maxInstances: 30,
-          factory: (pos) => ParticleEffects.sparkle(position: pos),
+          factory: (pos) => ParticleEffects.sparkle(position: _v3(pos)),
         ),
       ],
     );
@@ -884,7 +890,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     if (!_cometReady) return;
     setState(() => _cometReady = false);
     final emitter = ParticleEmitter(
-      position: const Offset(160, 80),
+      position: _v3(const Offset(160, 80)),
       maxParticles: 20,
       emissionRate: 0,
       particleLifetime: 2.2,
@@ -903,7 +909,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
           trigger: SubEmitterTrigger.onLifetimeFraction,
           lifetimeFraction: 0.4,
           maxInstances: 20,
-          factory: (pos) => ParticleEffects.smoke(position: pos),
+          factory: (pos) => ParticleEffects.smoke(position: _v3(pos)),
         ),
       ],
     );
@@ -916,9 +922,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     });
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Custom Effects
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   static const _kSpiralCenter = Offset(-150, 0);
   static const _kRainbowCenter = Offset(150, 0);
@@ -927,7 +933,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     final accent = _Demo.customEffects.accentColor;
     _addEmitter(
       ParticleEmitter(
-        position: _kSpiralCenter,
+        position: _v3(_kSpiralCenter),
         maxParticles: 100,
         emissionRate: 40,
         particleLifetime: 2.5,
@@ -946,7 +952,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     );
     _addEmitter(
       ParticleEmitter(
-        position: _kRainbowCenter,
+        position: _v3(_kRainbowCenter),
         maxParticles: 140,
         emissionRate: 55,
         particleLifetime: 3.0,
@@ -982,9 +988,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     _statusMessage = 'Both emitters use custom ParticleEffect subclasses';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Interactive
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildInteractive() {
     _addLabel(
@@ -1006,25 +1012,25 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     ];
     return switch (_interactivePreset) {
       0 => ParticleEffects.explosion(
-        position: pos,
+        position: _v3(pos),
         color: colors[_rng.nextInt(colors.length)],
         particleCount: 60,
       ),
-      1 => ParticleEffects.fire(position: pos),
-      2 => ParticleEffects.magic(position: pos, color: Colors.cyanAccent),
-      3 => ParticleEffects.confetti(position: pos, count: 60),
-      4 => ParticleEffects.electricSparks(position: pos),
+      1 => ParticleEffects.fire(position: _v3(pos)),
+      2 => ParticleEffects.magic(position: _v3(pos), color: Colors.cyanAccent),
+      3 => ParticleEffects.confetti(position: _v3(pos), count: 60),
+      4 => ParticleEffects.electricSparks(position: _v3(pos)),
       _ => ParticleEffects.explosion(
-        position: pos,
+        position: _v3(pos),
         color: Colors.orange,
         particleCount: 50,
       ),
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Pointer handling
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _handlePointerDown(Offset screenPos) {
     final worldPos = _engine.rendering.camera.screenToWorld(screenPos);
@@ -1048,7 +1054,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   void _handlePointerMove(Offset screenPos) {
     if (_demo != _Demo.interactive) return;
     final worldPos = _engine.rendering.camera.screenToWorld(screenPos);
-    _streamEmitter?.position = worldPos;
+    _streamEmitter?.position = _v3(worldPos);
   }
 
   void _handlePointerUp(Offset screenPos) {
@@ -1058,16 +1064,16 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Stats
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   int get _totalParticleCount =>
       _emitters.fold(0, (total, e) => total + e.particleCount);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // UI build
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -1147,7 +1153,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         enablePan: false,
         enablePinch: true,
         showZoomLevel: true,
-        child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+        child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
       ),
     );
   }

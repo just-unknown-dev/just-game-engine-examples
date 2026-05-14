@@ -1,13 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/models/feature_item.dart';
 import 'camera/camera_system_screen.dart';
 import 'core_engine/core_engine_screen.dart';
-import 'rendering/rendering_engine_screen.dart';
-import 'raycasting/raycasting_engine_screen.dart';
+import 'package:just_game_engine_examples/features/rendering/rendering_engine_screen.dart';
+import 'package:just_game_engine_examples/features/raycasting/raycasting_engine_screen.dart';
 
-import 'animation/animation_system_screen.dart';
-import 'sprite/sprite_system_screen.dart';
-import 'particle/particle_system_screen.dart';
+import 'package:just_game_engine_examples/features/animation/animation_system_screen.dart';
+import 'package:just_game_engine_examples/features/sprite/sprite_system_screen.dart';
+import 'package:just_game_engine_examples/features/particle/particle_system_screen.dart';
 import 'physics/physics_engine_screen.dart';
 import 'input/input_system_screen.dart';
 import 'audio/audio_engine_screen.dart';
@@ -18,7 +19,9 @@ import 'shaders/shader_screen.dart';
 import 'storage/storage_signals_screen.dart';
 import 'database/database_signals_screen.dart';
 import 'effects/deterministic_effects_screen.dart';
+import 'debugger/debugger_showcase_screen.dart';
 import 'narrative/narrative_system_screen.dart';
+import 'editor/editor_overlay_screen.dart';
 
 // List of features to showcase in the Demo App.
 final List<FeatureItem> appFeatures = [
@@ -28,6 +31,7 @@ final List<FeatureItem> appFeatures = [
     description: 'Showcases the Entity-Component-System (ECS) architecture.',
     builder: (context) => const CoreEngineScreen(),
   ),
+
   FeatureItem(
     title: 'Rendering Engine',
     icon: Icons.brush,
@@ -41,6 +45,14 @@ final List<FeatureItem> appFeatures = [
         'Spring follow, lookahead, multi-target, trauma shake, path, rooms, cinematic, screen effects & world bounds.',
     builder: (context) => const CameraSystemScreen(),
   ),
+  if (kDebugMode)
+    FeatureItem(
+      title: 'Game Editor Overlay',
+      icon: Icons.tune_rounded,
+      description:
+          'just_game_engine_editor runtime overlay with scene tree, inspector, gizmos, grouping, copy/paste and scene save workflow.',
+      builder: (context) => const EditorOverlayScreen(),
+    ),
   FeatureItem(
     title: 'Sprite System',
     icon: Icons.image,
@@ -133,5 +145,12 @@ final List<FeatureItem> appFeatures = [
         'Yarn Spinner 2.x parser, branching dialogue, variables, custom commands, '
         'reactive NarrativeSignals, ECS integration, and built-in dialogue widgets.',
     builder: (context) => const NarrativeSystemScreen(),
+  ),
+  FeatureItem(
+    title: 'Just Debugger',
+    icon: Icons.bug_report,
+    description:
+        'Live ECS debugger overlay and inspector bound to the running engine world.',
+    builder: (context) => const DebuggerShowcaseScreen(),
   ),
 ];

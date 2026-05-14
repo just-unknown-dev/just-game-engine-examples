@@ -244,6 +244,9 @@ class DeterministicEffectsScreen extends StatefulWidget {
 
 class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     with SingleTickerProviderStateMixin {
+  Vector3 _v3(Offset o) => Vector3.fromOffset(o);
+  Vector3 _scale3(double s) => Vector3(s, s, 1.0);
+
   // ── Engine ────────────────────────────────────────────────────────────────
   late final Engine _engine;
   late final World _world;
@@ -427,7 +430,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     String? name,
   }) {
     final e = _world.createEntity(name: name ?? 'ball');
-    e.addComponent(TransformComponent(position: position));
+    e.addComponent(TransformComponent(position: Vector3.fromOffset(position)));
     e.addComponent(
       RenderableComponent(
         renderable: CustomRenderable(
@@ -472,7 +475,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     String? name,
   }) {
     final e = _world.createEntity(name: name ?? 'box');
-    e.addComponent(TransformComponent(position: position));
+    e.addComponent(TransformComponent(position: Vector3.fromOffset(position)));
     e.addComponent(
       RenderableComponent(
         renderable: CustomRenderable(
@@ -523,7 +526,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     String? name,
   }) {
     final e = _world.createEntity(name: name ?? 'star');
-    e.addComponent(TransformComponent(position: position));
+    e.addComponent(TransformComponent(position: Vector3.fromOffset(position)));
     e.addComponent(
       RenderableComponent(
         renderable: CustomRenderable(
@@ -644,8 +647,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     for (final e in _demoEntities) {
       final t = e.getComponent<TransformComponent>();
       if (t != null) {
-        t.position = Offset.zero;
-        t.scale = 1.0;
+        t.position = _v3(Offset.zero);
+        t.scale = _scale3(1.0);
         t.rotation = 0.0;
       }
       final r = e.getComponent<RenderableComponent>();
@@ -659,14 +662,17 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     // Rebuild entity positions per demo
     switch (_demo) {
       case _Demo.move:
-        _demoEntities.first.getComponent<TransformComponent>()!.position =
-            const Offset(-160, 0);
+        _demoEntities.first.getComponent<TransformComponent>()!.position = _v3(
+          const Offset(-160, 0),
+        );
       case _Demo.path:
-        _demoEntities.first.getComponent<TransformComponent>()!.position =
-            const Offset(-100, 30);
+        _demoEntities.first.getComponent<TransformComponent>()!.position = _v3(
+          const Offset(-100, 30),
+        );
       case _Demo.sequence:
-        _demoEntities.first.getComponent<TransformComponent>()!.position =
-            const Offset(-120, 0);
+        _demoEntities.first.getComponent<TransformComponent>()!.position = _v3(
+          const Offset(-120, 0),
+        );
       default:
         break;
     }
@@ -676,13 +682,13 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playMove() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = const Offset(-160, 0);
+    e.getComponent<TransformComponent>()?.position = _v3(const Offset(-160, 0));
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
       entity: e,
       effect: MoveEffect(
-        from: const Offset(-160, 0),
-        to: const Offset(160, 0),
+        from: _v3(const Offset(-160, 0)),
+        to: _v3(const Offset(160, 0)),
         easing: _selectedEasing,
         durationTicks: _durationTicks,
       ),
@@ -695,7 +701,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     final e = _demoEntities.first;
     final t = e.getComponent<TransformComponent>();
     if (t != null) {
-      t.scale = 1.0;
+      t.scale = _scale3(1.0);
     }
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
@@ -815,7 +821,9 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playPathLinear() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = const Offset(-100, 30);
+    e.getComponent<TransformComponent>()?.position = _v3(
+      const Offset(-100, 30),
+    );
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
       entity: e,
@@ -838,7 +846,9 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playPathBezier() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = const Offset(-100, 30);
+    e.getComponent<TransformComponent>()?.position = _v3(
+      const Offset(-100, 30),
+    );
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
       entity: e,
@@ -861,7 +871,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playSequence() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = const Offset(-120, 0);
+    e.getComponent<TransformComponent>()?.position = _v3(const Offset(-120, 0));
     e.getComponent<RenderableComponent>()?.renderable.opacity = 1.0;
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
@@ -869,8 +879,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
       effect: SequenceEffect(
         children: [
           MoveEffect(
-            from: const Offset(-120, 0),
-            to: const Offset(100, 0),
+            from: _v3(const Offset(-120, 0)),
+            to: _v3(const Offset(100, 0)),
             easing: _selectedEasing,
             durationTicks: _durationTicks,
           ),
@@ -894,8 +904,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playParallel() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = Offset.zero;
-    e.getComponent<TransformComponent>()?.scale = 1.0;
+    e.getComponent<TransformComponent>()?.position = _v3(Offset.zero);
+    e.getComponent<TransformComponent>()?.scale = _scale3(1.0);
     e.getComponent<RenderableComponent>()?.renderable.opacity = 1.0;
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
@@ -903,8 +913,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
       effect: ParallelEffect(
         children: [
           MoveEffect(
-            from: Offset.zero,
-            to: const Offset(140, -80),
+            from: _v3(Offset.zero),
+            to: _v3(const Offset(140, -80)),
             easing: _selectedEasing,
             durationTicks: _durationTicks,
           ),
@@ -932,7 +942,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playRepeatBounce() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = Offset.zero;
+    e.getComponent<TransformComponent>()?.position = _v3(Offset.zero);
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
       entity: e,
@@ -941,14 +951,14 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
         child: SequenceEffect(
           children: [
             MoveEffect(
-              from: Offset.zero,
-              to: const Offset(0, -50),
+              from: _v3(Offset.zero),
+              to: _v3(const Offset(0, -50)),
               easing: EasingType.easeOutQuad,
               durationTicks: _durationTicks ~/ 3,
             ),
             MoveEffect(
-              from: const Offset(0, -50),
-              to: Offset.zero,
+              from: _v3(const Offset(0, -50)),
+              to: _v3(Offset.zero),
               easing: EasingType.easeInBounce,
               durationTicks: _durationTicks ~/ 3,
             ),
@@ -962,7 +972,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playRepeatInfinite() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = Offset.zero;
+    e.getComponent<TransformComponent>()?.position = _v3(Offset.zero);
     e.getComponent<EffectComponent>()?.player.cancelAll();
     _effectSystem.scheduleEffect(
       entity: e,
@@ -971,14 +981,14 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
         child: SequenceEffect(
           children: [
             MoveEffect(
-              from: Offset.zero,
-              to: const Offset(0, -20),
+              from: _v3(Offset.zero),
+              to: _v3(const Offset(0, -20)),
               easing: EasingType.easeOutSine,
               durationTicks: 40,
             ),
             MoveEffect(
-              from: const Offset(0, -20),
-              to: Offset.zero,
+              from: _v3(const Offset(0, -20)),
+              to: _v3(Offset.zero),
               easing: EasingType.easeInSine,
               durationTicks: 40,
             ),
@@ -992,8 +1002,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   void _playComposite() {
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
-    e.getComponent<TransformComponent>()?.position = Offset.zero;
-    e.getComponent<TransformComponent>()?.scale = 1.0;
+    e.getComponent<TransformComponent>()?.position = _v3(Offset.zero);
+    e.getComponent<TransformComponent>()?.scale = _scale3(1.0);
     e.getComponent<RenderableComponent>()?.renderable.opacity = 1.0;
     e.getComponent<RenderableComponent>()?.renderable.tint = null;
     e.getComponent<EffectComponent>()?.player.cancelAll();
@@ -1004,8 +1014,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
         child: SequenceEffect(
           children: [
             MoveEffect(
-              from: Offset.zero,
-              to: const Offset(100, -60),
+              from: _v3(Offset.zero),
+              to: _v3(const Offset(100, -60)),
               easing: EasingType.easeOutCubic,
               durationTicks: 25,
             ),
@@ -1027,8 +1037,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
               ],
             ),
             MoveEffect(
-              from: const Offset(100, -60),
-              to: Offset.zero,
+              from: _v3(const Offset(100, -60)),
+              to: _v3(Offset.zero),
               easing: EasingType.easeInOutCubic,
               durationTicks: 20,
             ),
@@ -1052,10 +1062,10 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     final t = e.getComponent<TransformComponent>();
     final r = e.getComponent<RenderableComponent>();
     final ec = e.getComponent<EffectComponent>();
-    final pos = t?.position ?? Offset.zero;
+    final pos = t?.position ?? Vector3.zero();
     return 'tick ${_effectSystem.currentTick}'
-        '  pos (${pos.dx.toStringAsFixed(0)}, ${pos.dy.toStringAsFixed(0)})'
-        '  scale ${(t?.scale ?? 1).toStringAsFixed(2)}'
+        '  pos (${pos.x.toStringAsFixed(0)}, ${pos.y.toStringAsFixed(0)})'
+        '  scale ${(((t?.scale.x ?? 1) + (t?.scale.y ?? 1)) / 2).toStringAsFixed(2)}'
         '  rot ${((t?.rotation ?? 0) * 180 / math.pi).toStringAsFixed(1)}°'
         '  α ${(r?.renderable.opacity ?? 1).toStringAsFixed(2)}'
         '  active ${ec?.player.activeCount ?? 0}';
@@ -1146,7 +1156,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   }
 
   Widget _buildCanvas() {
-    return GameWidget(engine: _engine, showFPS: true, showDebug: false);
+    return GameWidget(engine: _engine, showFPS: true, showDebug: true);
   }
 
   Widget _buildDemoSelector() {

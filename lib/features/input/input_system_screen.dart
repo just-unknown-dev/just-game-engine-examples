@@ -300,7 +300,7 @@ class _InputSystemScreenState extends State<InputSystemScreen>
       final a = corners[i];
       final b = corners[(i + 1) % 4];
       _world.createEntityWithComponents([
-        TransformComponent(position: a),
+        TransformComponent(position: Vector3.fromOffset(a)),
         RenderableComponent(
           renderable: LineRenderable(
             endPoint: b - a,
@@ -314,7 +314,7 @@ class _InputSystemScreenState extends State<InputSystemScreen>
 
     for (final c in corners) {
       _world.createEntityWithComponents([
-        TransformComponent(position: c),
+        TransformComponent(position: Vector3.fromOffset(c)),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: 5,
@@ -340,7 +340,7 @@ class _InputSystemScreenState extends State<InputSystemScreen>
     );
     _joystickRef.component = joystick;
     _world.createEntityWithComponents([
-      TransformComponent(position: Offset.zero),
+      TransformComponent(position: Vector3.fromOffset(Offset.zero)),
       RenderableComponent(
         renderable: CircleRenderable(
           radius: 20.0,
@@ -364,7 +364,9 @@ class _InputSystemScreenState extends State<InputSystemScreen>
               ? 'WASD / Arrows to move  ·  Space to dash'
               : 'WASD / Arrow Keys to move');
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -_halfH - 30)),
+      TransformComponent(
+        position: Vector3.fromOffset(const Offset(0, -_halfH - 30)),
+      ),
       TextComponent(
         text: hint,
         textStyle: const TextStyle(
@@ -509,7 +511,7 @@ class _InputSystemScreenState extends State<InputSystemScreen>
             key: _canvasKey,
             engine: _engine,
             showFPS: true,
-            showDebug: false,
+            showDebug: true,
           ),
         ),
 
@@ -1035,17 +1037,19 @@ class _PlayerControllerSystem extends System {
         _trailTimer -= dt;
         if (_trailTimer <= 0) {
           _trailTimer = _trailInterval;
-          _pendingTrailSpawns.add(transform.position);
+          _pendingTrailSpawns.add(transform.position.toOffset());
         }
       } else {
         velocity = dir * player.speed;
       }
 
       // ── 5. Move & clamp to boundary ───────────────────────────────────
-      final next = transform.position + velocity * dt;
-      transform.position = Offset(
-        next.dx.clamp(-_halfW + _playerRadius, _halfW - _playerRadius),
-        next.dy.clamp(-_halfH + _playerRadius, _halfH - _playerRadius),
+      final next = transform.position.toOffset() + velocity * dt;
+      transform.position = Vector3.fromOffset(
+        Offset(
+          next.dx.clamp(-_halfW + _playerRadius, _halfW - _playerRadius),
+          next.dy.clamp(-_halfH + _playerRadius, _halfH - _playerRadius),
+        ),
       );
     });
 
@@ -1061,7 +1065,7 @@ class _PlayerControllerSystem extends System {
       layer: 9,
     );
     world.createEntityWithComponents([
-      TransformComponent(position: pos),
+      TransformComponent(position: Vector3.fromOffset(pos)),
       RenderableComponent(renderable: ghost),
       _DashTrailComponent(lifetime: 0.32, renderable: ghost),
     ]);

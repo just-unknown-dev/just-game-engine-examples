@@ -170,10 +170,11 @@ class _PulseSystem extends System {
       final p = entity.getComponent<_PulseComponent>()!;
       p.time += deltaTime;
       final t = entity.getComponent<TransformComponent>()!;
-      t.scale =
+      final s =
           p.minScale +
           (p.maxScale - p.minScale) *
               (0.5 + 0.5 * math.sin(p.time * p.speed + p.phase));
+      t.scale = Vector3(s, s, 1.0);
     }
   }
 }
@@ -189,9 +190,11 @@ class _OrbitSystem extends System {
       final o = entity.getComponent<_OrbitComponent>()!;
       o.angle += deltaTime * o.speed;
       final t = entity.getComponent<TransformComponent>()!;
-      t.position = Offset(
-        o.center.dx + math.cos(o.angle) * o.radius,
-        o.center.dy + math.sin(o.angle) * o.radius,
+      t.position = Vector3.fromOffset(
+        Offset(
+          o.center.dx + math.cos(o.angle) * o.radius,
+          o.center.dy + math.sin(o.angle) * o.radius,
+        ),
       );
     }
   }
@@ -208,9 +211,11 @@ class _DriftSystem extends System {
       final d = entity.getComponent<_DriftComponent>()!;
       d.time += deltaTime;
       final t = entity.getComponent<TransformComponent>()!;
-      t.position = Offset(
-        d.origin.dx + math.sin(d.time * d.speed + d.phaseX) * d.rangeX,
-        d.origin.dy + math.cos(d.time * d.speed * 0.7 + d.phaseY) * d.rangeY,
+      t.position = Vector3.fromOffset(
+        Offset(
+          d.origin.dx + math.sin(d.time * d.speed + d.phaseX) * d.rangeX,
+          d.origin.dy + math.cos(d.time * d.speed * 0.7 + d.phaseY) * d.rangeY,
+        ),
       );
     }
   }
@@ -380,7 +385,7 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
       final y = (rng.nextDouble() - 0.5) * 700;
       final r = 1.0 + rng.nextDouble() * 2.2;
       _world.createEntityWithComponents([
-        TransformComponent(position: Offset(x, y)),
+        TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: r,
@@ -431,7 +436,7 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
       RenderableComponent(
         syncTransform: false,
         renderable: CustomRenderable(
-          position: Offset.zero,
+          position: Vector3.fromOffset(Offset.zero),
           layer: -8,
           onRender: (canvas, size) {
             const clouds = [
@@ -517,7 +522,7 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
         (rng.nextDouble() - 0.5) * 420,
       );
       _world.createEntityWithComponents([
-        TransformComponent(position: origin),
+        TransformComponent(position: Vector3.fromOffset(origin)),
         RenderableComponent(
           renderable: CircleRenderable(
             radius: 3,
@@ -641,7 +646,7 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          GameWidget(engine: _engine, showFPS: true, showDebug: false),
+          GameWidget(engine: _engine, showFPS: true, showDebug: true),
 
           // Simulated post-process overlays rendered as a chained Canvas pass —
           // mirrors what ShaderComponent(isPostProcess: true) + PostProcessPass

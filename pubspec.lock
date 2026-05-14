@@ -129,11 +129,43 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+  firebase_core:
+    dependency: "direct main"
+    description:
+      name: firebase_core
+      sha256: "2f988dab915efde3b3105268dbd69efce0e8570d767a218ccd914afd0c10c8cc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.6.0"
+  firebase_core_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_core_platform_interface
+      sha256: "0ecda14c1bfc9ed8cac303dd0f8d04a320811b479362a9a4efb14fd331a473ce"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.3"
+  firebase_core_web:
+    dependency: transitive
+    description:
+      name: firebase_core_web
+      sha256: "1399ab1f0ac3b503d8a9be64a4c997fc066bbf33f701f42866e5569f26205ebe"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.5.1"
   flutter:
     dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_colorpicker:
+    dependency: transitive
+    description:
+      name: flutter_colorpicker
+      sha256: "969de5f6f9e2a570ac660fb7b501551451ea2a1ab9e2097e89475f60e07816ea"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -142,14 +174,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_soloud:
-    dependency: transitive
-    description:
-      name: flutter_soloud
-      sha256: "4025171a7731eb669e306487074d974b3ebd419547397e17930c325014571148"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.5.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -160,14 +184,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  get_it:
-    dependency: "direct main"
-    description:
-      name: get_it
-      sha256: ae78de7c3f2304b8d81f2bb6e320833e5e81de942188542328f074978cc0efa9
-      url: "https://pub.dev"
-    source: hosted
-    version: "8.3.0"
   glob:
     dependency: transitive
     description:
@@ -184,22 +200,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  http:
-    dependency: transitive
-    description:
-      name: http
-      sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
-  http_parser:
-    dependency: transitive
-    description:
-      name: http_parser
-      sha256: "178d74305e7866013777bab2c3d8726205dc5a4dd935297175b19a23a2e66571"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.1.2"
   js:
     dependency: transitive
     description:
@@ -208,53 +208,94 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.2"
+  just_audio_engine:
+    dependency: "direct overridden"
+    description:
+      path: "packages/just_audio_engine"
+      relative: true
+    source: path
+    version: "1.0.1"
   just_database:
     dependency: transitive
     description:
       name: just_database
-      sha256: "3d0e575dc2e2057a403c6d70161ca45e8261f578307993e5e88a08f011c4611d"
+      sha256: "797689a4762f4d8d9f06cf0f98abbc83d11142ce22c5e4b41842cae2fa110ef8"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.0"
+    version: "1.4.2"
+  just_debugger:
+    dependency: "direct main"
+    description:
+      path: "packages/just_debugger"
+      relative: true
+    source: path
+    version: "0.0.1"
+  just_di:
+    dependency: "direct main"
+    description:
+      name: just_di
+      sha256: c96f503bad9c066217a11dfd624443d7e112900f28b8bbfca790f8daa976f876
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   just_game_engine:
     dependency: "direct main"
     description:
       path: "packages/just_game_engine"
       relative: true
     source: path
-    version: "1.4.0"
-  just_signals:
-    dependency: transitive
+    version: "1.6.0"
+  just_game_engine_editor:
+    dependency: "direct main"
     description:
-      name: just_signals
-      sha256: "403f4c30be9add2a9e60e18e0ef13f834d9316f2de63ea88bba79e9b172d64c3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
+      path: "packages/just_game_engine_editor"
+      relative: true
+    source: path
+    version: "0.0.1"
+  just_memory:
+    dependency: "direct overridden"
+    description:
+      path: "packages/just_memory"
+      relative: true
+    source: path
+    version: "0.1.0"
+  just_physics_engine:
+    dependency: "direct overridden"
+    description:
+      path: "packages/just_physics_engine"
+      relative: true
+    source: path
+    version: "0.0.1"
+  just_signals:
+    dependency: "direct overridden"
+    description:
+      path: "packages/just_signals"
+      relative: true
+    source: path
+    version: "1.0.2"
   just_storage:
     dependency: transitive
     description:
       name: just_storage
-      sha256: "47aa3a5b6d13a547b95e70ec28dd63c6acd074ba9571bdb786155e0638c9a83a"
+      sha256: "3f8ece6df297eb8ebf60dca0588efc2a0ad2fbd23ee59a6fb443b871811b6106"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.1"
   just_tiled:
     dependency: "direct main"
     description:
-      name: just_tiled
-      sha256: "314f2f6e941afa57ba656386b37ee385447126d9e95489c905213779fa876a7c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
+      path: "packages/just_tiled"
+      relative: true
+    source: path
+    version: "0.3.0"
   just_zstd:
     dependency: transitive
     description:
       name: just_zstd
-      sha256: b83b708e7b07ede42c6dabe9db3ead97957bf366c2717e198a2263b59b3e84ed
+      sha256: b2fa7bd191709f51577912a9807382fc08fa3a6c7147c7b7c9bdb01f54edb2ba
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.2.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -327,14 +368,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.4"
-  nested:
-    dependency: transitive
-    description:
-      name: nested
-      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   objective_c:
     dependency: transitive
     description:
@@ -439,14 +472,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.0"
-  provider:
-    dependency: transitive
-    description:
-      name: provider
-      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.5+1"
   pub_semver:
     dependency: transitive
     description:

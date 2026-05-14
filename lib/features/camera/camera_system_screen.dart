@@ -239,7 +239,9 @@ class _MoveSystem extends System {
           );
         }
       }
-      entity.getComponent<TransformComponent>()!.position = m.position;
+      entity.getComponent<TransformComponent>()!.position = Vector3.fromOffset(
+        m.position,
+      );
     }
   }
 }
@@ -254,9 +256,11 @@ class _OrbitSystem extends System {
       if (!entity.isActive) continue;
       final o = entity.getComponent<_OrbitTagComponent>()!;
       o.angle += o.speed * dt;
-      entity.getComponent<TransformComponent>()!.position = Offset(
-        o.center.dx + math.cos(o.angle) * o.radius,
-        o.center.dy + math.sin(o.angle) * o.radius,
+      entity.getComponent<TransformComponent>()!.position = Vector3.fromOffset(
+        Offset(
+          o.center.dx + math.cos(o.angle) * o.radius,
+          o.center.dy + math.sin(o.angle) * o.radius,
+        ),
       );
     }
   }
@@ -480,7 +484,7 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
       final sides = 5 + rng.nextInt(4);
       final size = 28.0 + rng.nextDouble() * 24;
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: -5,
@@ -655,7 +659,9 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
       targets.add(mover.position);
 
       final entity = _world.createEntity();
-      entity.addComponent(TransformComponent(position: mover.position));
+      entity.addComponent(
+        TransformComponent(position: Vector3.fromOffset(mover.position)),
+      );
       entity.addComponent(mover);
       entity.addComponent(
         RenderableComponent(renderable: _makePlayerRenderable(colors[i])),
@@ -730,7 +736,7 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
     ];
     for (int i = 0; i < positions.length; i++) {
       _world.createEntityWithComponents([
-        TransformComponent(position: positions[i]),
+        TransformComponent(position: Vector3.fromOffset(positions[i])),
         RenderableComponent(
           renderable: _makePlayerRenderable(colors[i], radius: 20),
         ),
@@ -873,13 +879,13 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
 
     // Players in each room
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(-420, 0)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(-420, 0))),
       RenderableComponent(
         renderable: _makePlayerRenderable(const Color(0xFF66BB6A)),
       ),
     ]);
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(420, 0)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(420, 0))),
       RenderableComponent(
         renderable: _makePlayerRenderable(const Color(0xFF42A5F5)),
       ),
@@ -917,7 +923,7 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
     ];
     for (final (pos, color, label) in pois) {
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(
           renderable: CustomRenderable(
             layer: 5,
@@ -1152,7 +1158,7 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
     _world.addSystem(_MoveSystem(bounds: _kWorldBounds));
 
     _world.createEntityWithComponents([
-      TransformComponent(position: mover.position),
+      TransformComponent(position: Vector3.fromOffset(mover.position)),
       mover,
       RenderableComponent(
         renderable: _makePlayerRenderable(const Color(0xFF78909C)),
@@ -1258,7 +1264,7 @@ class _CameraSystemScreenState extends State<CameraSystemScreen>
       enablePan: true,
       enablePinch: true,
       showZoomLevel: true,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
     );
   }
 

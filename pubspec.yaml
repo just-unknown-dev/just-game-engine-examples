@@ -40,10 +40,13 @@ dependencies:
   firebase_core: ^4.6.0
   
   # Just Game Engine package
-  just_game_engine: ^1.4.0
+  just_game_engine: ^1.6.0
+  just_debugger: ^0.0.1
   url_launcher: ^6.3.2
-  get_it: ^8.0.3
+  just_di: ^1.0.0
   just_tiled: ^0.2.0
+  just_game_engine_editor:
+    path: packages/just_game_engine_editor
 
 dev_dependencies:
   flutter_test:

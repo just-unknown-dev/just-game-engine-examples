@@ -1,12 +1,12 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo mode
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _Demo {
   lifecycle,
@@ -99,9 +99,9 @@ enum _Demo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ECS helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _OrbitComponent extends Component {
   _OrbitComponent({
@@ -146,9 +146,8 @@ class _OrbitSystem extends System {
       final t = entity.getComponent<TransformComponent>()!;
       final o = entity.getComponent<_OrbitComponent>()!;
       o.angle += o.speed * dt;
-      t.position = Offset(
-        math.cos(o.angle) * o.radius,
-        math.sin(o.angle) * o.radius,
+      t.position = Vector3.fromOffset(
+        Offset(math.cos(o.angle) * o.radius, math.sin(o.angle) * o.radius),
       );
     });
   }
@@ -165,14 +164,15 @@ class _PulseSystem extends System {
       final p = entity.getComponent<_PulseComponent>()!;
       p.time += dt;
       final wave = (math.sin(p.phase + p.time * p.speed) + 1) / 2;
-      t.scale = p.minScale + (p.maxScale - p.minScale) * wave;
+      final s = p.minScale + (p.maxScale - p.minScale) * wave;
+      t.scale = Vector3(s, s, 1.0);
     });
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class CoreEngineScreen extends StatefulWidget {
   const CoreEngineScreen({super.key});
@@ -380,7 +380,7 @@ class _CoreEngineScreenState extends State<CoreEngineScreen>
     ], name: 'engine-hub');
 
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -10)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(0, -10))),
       RenderableComponent(
         syncTransform: true,
         renderable: TextRenderable(
@@ -413,7 +413,7 @@ class _CoreEngineScreenState extends State<CoreEngineScreen>
 
     for (int i = 0; i < 4; i++) {
       _world.createEntityWithComponents([
-        TransformComponent(position: Offset.zero),
+        TransformComponent(position: Vector3.fromOffset(Offset.zero)),
         RenderableComponent(
           syncTransform: false,
           renderable: CustomRenderable(
@@ -565,7 +565,7 @@ class _CoreEngineScreenState extends State<CoreEngineScreen>
     ]);
 
     _world.createEntityWithComponents([
-      TransformComponent(position: const Offset(0, -6)),
+      TransformComponent(position: Vector3.fromOffset(const Offset(0, -6))),
       RenderableComponent(
         syncTransform: true,
         renderable: TextRenderable(
@@ -805,7 +805,7 @@ class _CoreEngineScreenState extends State<CoreEngineScreen>
       enablePan: true,
       enablePinch: true,
       showZoomLevel: true,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: false),
+      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
     );
   }
 

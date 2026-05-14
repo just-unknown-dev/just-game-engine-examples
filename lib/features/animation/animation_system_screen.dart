@@ -7,9 +7,9 @@ import 'package:just_game_engine/just_game_engine.dart';
 
 import '../../core/widgets/camera_zoom_controls.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Demo mode
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 enum _AnimDemo {
   spriteAtlas,
@@ -121,9 +121,9 @@ enum _AnimDemo {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ECS -- private components & systems
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class _AtlasAnimComponent extends Component {
   AtlasSpriteAnimation? anim;
@@ -166,9 +166,11 @@ class _FloatSystem extends System {
       final t = entity.getComponent<TransformComponent>()!;
       final f = entity.getComponent<_FloatComponent>()!;
       f.time += dt;
-      t.position = Offset(
-        f.origin.dx,
-        f.origin.dy + math.sin(f.phase + f.time * f.speed) * f.amplitudeY,
+      t.position = Vector3.fromOffset(
+        Offset(
+          f.origin.dx,
+          f.origin.dy + math.sin(f.phase + f.time * f.speed) * f.amplitudeY,
+        ),
       );
     });
   }
@@ -198,9 +200,9 @@ class _ClipData {
   final double fps;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 class AnimationSystemScreen extends StatefulWidget {
   const AnimationSystemScreen({super.key});
@@ -246,9 +248,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
   double _perFrameSpeed = 1.0;
   AtlasSpriteAnimation? _perFrameAnim;
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   void initState() {
@@ -267,9 +269,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Loading
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     setState(() => _loading = true);
@@ -441,9 +443,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Tick
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _onTick(Duration elapsed) {
     if (_lastTick == Duration.zero) {
@@ -456,9 +458,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Demo construction
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   void _buildDemo(_AnimDemo demo) {
     if (_char02Atlas == null || _char03Atlas == null) return;
@@ -537,7 +539,7 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
       final pos = Offset(startX + col * sx, -30.0 + row * sy);
 
       final sprite = atlas.createSprite('${_atlasClip}_0', layer: 6);
-      sprite.position = pos;
+      sprite.position = Vector3.fromOffset(pos);
       final anim = atlas.createAnimation(
         _atlasClip,
         sprite,
@@ -545,7 +547,7 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
       );
 
       _world.createEntityWithComponents([
-        TransformComponent(position: pos),
+        TransformComponent(position: Vector3.fromOffset(pos)),
         RenderableComponent(renderable: sprite),
         _AtlasAnimComponent(anim: anim),
         _FloatComponent(
@@ -616,11 +618,11 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
     for (int i = 0; i < dirs.length; i++) {
       final clipName = '${_topDownMode}_${dirs[i]}';
       final sprite = atlas.createSprite('${clipName}_0', scale: 2.0, layer: 6);
-      sprite.position = positions[i];
+      sprite.position = Vector3.fromOffset(positions[i]);
       final anim = atlas.createAnimation(clipName, sprite);
 
       _world.createEntityWithComponents([
-        TransformComponent(position: positions[i]),
+        TransformComponent(position: Vector3.fromOffset(positions[i])),
         RenderableComponent(renderable: sprite),
         _AtlasAnimComponent(anim: anim),
       ], name: 'dir-${dirs[i]}');
@@ -673,9 +675,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
         'O(log n) binary-search frame lookup';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // Helpers
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   Size _readViewportSize() {
     final ro = _gameWidgetKey.currentContext?.findRenderObject();
@@ -691,9 +693,9 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
         '  |  char03  ${a3.regionCount} regions · ${a3.pages.length} pages';
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
   // UI
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -784,7 +786,7 @@ class _AnimationSystemScreenState extends State<AnimationSystemScreen>
         key: _gameWidgetKey,
         engine: _engine,
         showFPS: true,
-        showDebug: false,
+        showDebug: true,
       ),
     );
   }
