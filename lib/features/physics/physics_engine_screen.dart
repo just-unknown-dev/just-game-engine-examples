@@ -127,68 +127,6 @@ enum _Demo {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ECS helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PhysicsSyncSystem extends System {
-  @override
-  List<Type> get requiredComponents => [
-    PhysicsBodyRefComponent,
-    TransformComponent,
-  ];
-
-  @override
-  void update(double dt) {
-    forEach((entity) {
-      final physics = entity.getComponent<PhysicsBodyRefComponent>()!;
-      final transform = entity.getComponent<TransformComponent>()!;
-      transform.position = Vector3(
-        physics.body.position.x,
-        physics.body.position.y,
-        transform.position.z,
-      );
-      transform.rotation = physics.body.angle;
-    });
-  }
-}
-
-class _CameraAwareRenderSystem extends System {
-  _CameraAwareRenderSystem(this.camera);
-
-  final Camera camera;
-
-  @override
-  List<Type> get requiredComponents => [
-    TransformComponent,
-    RenderableComponent,
-  ];
-
-  @override
-  void render(Canvas canvas, Size size) {
-    camera.viewportSize = size;
-    canvas.save();
-    camera.applyTransform(canvas, size);
-
-    forEach((entity) {
-      final transform = entity.getComponent<TransformComponent>()!;
-      final renderComp = entity.getComponent<RenderableComponent>()!;
-
-      if (renderComp.syncTransform) {
-        renderComp.renderable.position = transform.position;
-        renderComp.renderable.rotation = transform.rotation;
-        renderComp.renderable.scale = transform.scale;
-      }
-
-      if (renderComp.renderable.visible) {
-        renderComp.renderable.render(canvas, size);
-      }
-    });
-
-    canvas.restore();
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -229,6 +167,13 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   void initState() {
     super.initState();
     _engine = Engine();
+    if (!_engine.isRunning) {
+      if (_engine.isPaused) {
+        _engine.resume();
+      } else {
+        _engine.start();
+      }
+    }
     _world = _engine.world;
     _ticker = createTicker(_onTick)..start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -248,14 +193,22 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _onTick(Duration elapsed) {
-    if (_lastTick == Duration.zero) {
-      _lastTick = elapsed;
-      return;
+    // Prefer the unified GameWidget-driven game loop.
+    // If the engine loop is not running (for example, another screen called
+    // engine.stop()), run a local fallback step so this showcase stays live.
+    if (!_engine.isRunning) {
+      if (_lastTick == Duration.zero) {
+        _lastTick = elapsed;
+      } else {
+        final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
+        _lastTick = elapsed;
+        _engine.physics.update(dt);
+        _world.update(dt);
+      }
+    } else {
+      _lastTick = Duration.zero;
     }
-    final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
-    _lastTick = elapsed;
-    _engine.physics.update(dt);
-    _world.update(dt);
+
     if (mounted) setState(() {});
   }
 
@@ -272,12 +225,44 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
     }
   }
 
+  void _addBody(PhysicsBody body) {
+    _engine.physics.addBody(body);
+  }
+
   void _clearAll() {
+    final wasRunning = _engine.isRunning;
+    if (wasRunning) {
+      _engine.pause();
+    }
+
+    // ── Step 1: Destroy all ECS entities and systems
     _world.destroyAllEntities();
     _world.clearSystems();
+
+    // ── Step 2: Clear rendering engine (removes all renderables, layers, effects)
+    // This prevents cached renderables and post-process effects from previous
+    // demos from affecting the new demo.
+    _engine.rendering.clear();
+
+    // ── Step 3: Remove all physics bodies from the current physics engine
     final bodies = List<PhysicsBody>.from(_engine.physics.bodies);
     for (final b in bodies) {
       _engine.physics.removeBody(b);
+    }
+
+    // ── Step 4: Explicitly reset physics state to defaults
+    // Body removal in Step 3 already destroys every native Box2D body via
+    // b2w_destroyBody, leaving the world empty. A full dispose+reinitialize
+    // is NOT needed and actually causes a re-init failure on some platforms,
+    // which silently switches the engine to the pure-Dart fallback and lets
+    // base-class _bodies accumulate across demo switches (ghost collisions).
+    // Ensures BOTH the Dart gravity vector AND the native Box2D world gravity
+    // are zeroed. Must use setGravity() — gravity.setValues() only updates
+    // the Dart Vector2 and does NOT propagate to the native simulation.
+    _engine.physics.setGravity(0, 0);
+
+    if (wasRunning) {
+      _engine.resume();
     }
   }
 
@@ -287,10 +272,10 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
     _refreshArenaSize();
     _clearAll();
     _engine.rendering.camera.reset();
-    _engine.physics.gravity.setValues(0, 98);
+    _engine.physics.setGravity(0, 98);
 
-    _world.addSystem(_PhysicsSyncSystem());
-    _world.addSystem(_CameraAwareRenderSystem(_engine.rendering.camera));
+    _world.addSystem(PhysicsBridgeSystem());
+    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
     if (_showColliderDebug) {
       _world.addSystem(
         ColliderDebuggerSystem(
@@ -313,7 +298,6 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       case _Demo.bodyStack:
         _buildBodyStack();
     }
-
     if (mounted) setState(() {});
   }
 
@@ -357,7 +341,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         drag: 0,
         useGravity: false,
       );
-      _engine.physics.addBody(body);
+      _addBody(body);
       _world.createEntityWithComponents([
         PhysicsBodyRefComponent(body),
         TransformComponent(position: Vector3.fromOffset(w.pos)),
@@ -379,7 +363,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _buildParticleStorm() {
-    _engine.physics.gravity.setValues(0, _gravityEnabled ? 98 : 0);
+    _engine.physics.setGravity(0, _gravityEnabled ? 98 : 0);
     _createWalls();
     _spawnCircles(_ballCount, _initialVelocity);
     _statusMessage = 'Adjust sliders then tap Respawn';
@@ -404,7 +388,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         drag: 0.01,
         useGravity: _gravityEnabled,
       );
-      _engine.physics.addBody(body);
+      _addBody(body);
       _world.createEntityWithComponents([
         PhysicsBodyRefComponent(body),
         TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -428,7 +412,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   void _setParticleGravity(bool enabled) {
     setState(() {
       _gravityEnabled = enabled;
-      _engine.physics.gravity.setValues(0, enabled ? 98 : 0);
+      _engine.physics.setGravity(0, enabled ? 98 : 0);
       for (final b in _engine.physics.bodies) {
         if (b.mass > 0) {
           b.useGravity = enabled;
@@ -462,7 +446,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         drag: 0.003,
         useGravity: true,
       );
-      _engine.physics.addBody(body);
+      _addBody(body);
       _world.createEntityWithComponents([
         PhysicsBodyRefComponent(body),
         TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -485,7 +469,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   }
 
   void _warpGravity(double gx, double gy, String label) {
-    _engine.physics.gravity.setValues(gx, gy);
+    _engine.physics.setGravity(gx, gy);
     for (final b in _engine.physics.bodies) {
       if (b.mass > 0) {
         b.useGravity = gx != 0 || gy != 0;
@@ -510,7 +494,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   ];
 
   void _buildBounciness() {
-    _engine.physics.gravity.setValues(0, 120);
+    _engine.physics.setGravity(0, 120);
     final hw = _halfW;
     final hh = _halfH;
 
@@ -538,7 +522,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         drag: 0,
         useGravity: false,
       );
-      _engine.physics.addBody(body);
+      _addBody(body);
       _world.createEntityWithComponents([
         PhysicsBodyRefComponent(body),
         TransformComponent(position: Vector3.fromOffset(w.pos)),
@@ -577,7 +561,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         drag: 0.0,
         useGravity: true,
       );
-      _engine.physics.addBody(body);
+      _addBody(body);
       _world.createEntityWithComponents([
         PhysicsBodyRefComponent(body),
         TransformComponent(
@@ -655,7 +639,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           drag: 0.005,
           useGravity: true,
         );
-        _engine.physics.addBody(body);
+        _addBody(body);
         _world.createEntityWithComponents([
           PhysicsBodyRefComponent(body),
           TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -682,7 +666,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           drag: 0.01,
           useGravity: true,
         );
-        _engine.physics.addBody(body);
+        _addBody(body);
         _world.createEntityWithComponents([
           PhysicsBodyRefComponent(body),
           TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -714,7 +698,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           drag: 0.008,
           useGravity: true,
         );
-        _engine.physics.addBody(body);
+        _addBody(body);
         _world.createEntityWithComponents([
           PhysicsBodyRefComponent(body),
           TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -749,7 +733,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _buildBodyStack() {
-    _engine.physics.gravity.setValues(0, 150);
+    _engine.physics.setGravity(0, 150);
     _createWalls(restitution: 0.2, friction: 0.5);
     _buildTower();
     _statusMessage = 'Tap "Drop Ball" to send a heavy ball into the tower';
@@ -778,7 +762,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           drag: 0.02,
           useGravity: true,
         );
-        _engine.physics.addBody(body);
+        _addBody(body);
         _world.createEntityWithComponents([
           PhysicsBodyRefComponent(body),
           TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
@@ -812,7 +796,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       drag: 0.01,
       useGravity: true,
     );
-    _engine.physics.addBody(body);
+    _addBody(body);
     _world.createEntityWithComponents([
       PhysicsBodyRefComponent(body),
       TransformComponent(position: Vector3.fromOffset(Offset(0, spawnY))),

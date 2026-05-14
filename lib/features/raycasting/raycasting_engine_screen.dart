@@ -1,9 +1,8 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
-import 'package:just_physics_engine/just_physics_engine.dart' show Ray;
 
 // -----------------------------------------------------------------------------
 // Demo mode
@@ -117,11 +116,6 @@ enum _Demo {
 // ECS Components
 // -----------------------------------------------------------------------------
 
-class _PhysicsComponent extends Component {
-  _PhysicsComponent({required this.body});
-  final PhysicsBody body;
-}
-
 class _RayVisualComponent extends Component {
   _RayVisualComponent({
     required this.createdAt,
@@ -136,31 +130,6 @@ class _WallTagComponent extends Component {}
 class _EnemyTagComponent extends Component {}
 
 class _TargetTagComponent extends Component {}
-
-class _ScanResultComponent extends Component {
-  double _hitFraction = 1.0;
-  double get hitFraction => _hitFraction;
-  set hitFraction(double v) => _hitFraction = v;
-}
-
-// -----------------------------------------------------------------------------
-// ECS Systems
-// -----------------------------------------------------------------------------
-
-class _PhysicsSyncSystem extends System {
-  @override
-  List<Type> get requiredComponents => [_PhysicsComponent, TransformComponent];
-
-  @override
-  void update(double dt) {
-    forEach((entity) {
-      final physics = entity.getComponent<_PhysicsComponent>()!;
-      final transform = entity.getComponent<TransformComponent>()!;
-      transform.position = Vector3.fromOffset(physics.body.position.toOffset());
-      transform.rotation = physics.body.angle;
-    });
-  }
-}
 
 class _RayVisualSystem extends System {
   @override
@@ -209,7 +178,6 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
   RayTracer? _rayTracer;
 
   // -- Shoot demo -----------------------------------------------------------
-  PhysicsBody? _playerBody;
   int _enemiesDestroyed = 0;
   int _totalEnemies = 10;
 
@@ -286,7 +254,6 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
   void _buildDemo(_Demo demo) {
     _demo = demo;
     _statusMessage = '';
-    _playerBody = null;
     _enemiesDestroyed = 0;
     _rayTracer = null;
 
@@ -294,7 +261,6 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
 
     // Base systems for every demo
     _raycastSystem = RaycastSystem();
-    _world.addSystem(_PhysicsSyncSystem());
     _world.addSystem(_raycastSystem);
     _world.addSystem(_RayVisualSystem());
     _world.addSystem(ColliderDebuggerSystem(camera: _engine.rendering.camera));
@@ -458,7 +424,6 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     Offset from,
     Offset to, {
     Color color = const Color(0xFFFFFF00),
-    int lifetime = 220,
   }) {
     _world.createEntityWithComponents([
       TransformComponent(position: Vector3.fromOffset(from)),
@@ -542,8 +507,6 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
     _spawnRayLine(playerPos, rayEnd, color: const Color(0xFFFFFF00));
 
     if (hit != null) {
-      final physComp = hit.entity.getComponent<_PhysicsComponent>();
-      if (physComp != null) _engine.physics.removeBody(physComp.body);
       _world.destroyEntity(hit.entity);
       final remaining = _world.entities
           .where((e) => e.hasComponent<_EnemyTagComponent>())
@@ -978,7 +941,7 @@ class _RaycastingEngineScreenState extends State<RaycastingEngineScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (context, index) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;
