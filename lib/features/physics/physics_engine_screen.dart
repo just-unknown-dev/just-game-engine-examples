@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13,7 +14,11 @@ enum _Demo {
   gravityWarp,
   bounciness,
   shapeMixer,
-  bodyStack;
+  bodyStack,
+  sensors,
+  queries,
+  springChain,
+  carPhysics;
 
   String get label => switch (this) {
     particleStorm => 'Particle Storm',
@@ -21,6 +26,10 @@ enum _Demo {
     bounciness => 'Bounciness',
     shapeMixer => 'Shape Mixer',
     bodyStack => 'Body Stack',
+    sensors => 'Sensors',
+    queries => 'Queries',
+    springChain => 'Spring Chain',
+    carPhysics => 'Car Physics',
   };
 
   IconData get icon => switch (this) {
@@ -29,6 +38,10 @@ enum _Demo {
     bounciness => Icons.sports_tennis,
     shapeMixer => Icons.category,
     bodyStack => Icons.stacked_bar_chart,
+    sensors => Icons.radar,
+    queries => Icons.search,
+    springChain => Icons.link,
+    carPhysics => Icons.directions_car,
   };
 
   Color get accentColor => switch (this) {
@@ -37,6 +50,10 @@ enum _Demo {
     bounciness => const Color(0xFFFF7043),
     shapeMixer => const Color(0xFFAB47BC),
     bodyStack => const Color(0xFFFFCA28),
+    sensors => const Color(0xFFFFD54F),
+    queries => const Color(0xFFEF9A9A),
+    springChain => const Color(0xFFCE93D8),
+    carPhysics => const Color(0xFF80CBC4),
   };
 
   String get description => switch (this) {
@@ -50,11 +67,24 @@ enum _Demo {
       'Restitution coefficient [0…1] controls energy preserved on impact. '
           'Six columns each drop a ball with a distinct restitution value.',
     shapeMixer =>
-      'Circles, rectangles, and convex polygons colliding together. '
-          'SAT (Separating Axis Theorem) resolves all cross-shape pairs.',
+      'Classic and new collision shapes in one sandbox: circles, rectangles, '
+          'convex polygons, capsules, segments, chains, and rounded polygons. '
+          'Mix them together to exercise SAT across the full shape set.',
     bodyStack =>
       'Stacked rigid bodies demonstrating impulse resolution and mass-weighted '
           'positional correction. Drop a heavy ball to topple the tower.',
+    sensors =>
+      'Sensor bodies detect overlaps without resolving collisions. '
+          'The yellow zone fires SensorEnterEvent / SensorExitEvent as balls pass through.',
+    queries =>
+      'castRay · castRayAll · queryAABB · queryCircle — spatial queries against '
+          'physics bodies. A rotating ray and a circle zone highlight hits each frame.',
+    springChain =>
+      'Distance joints with spring stiffness + damping model rope, chains, and '
+          'elastic connectors. Weld joints rigidly lock two bodies into one rigid compound.',
+    carPhysics =>
+      'A 2-D car chassis connected to two wheels via WheelJoints (Box2D spring+motor) '
+          'or PrismaticJoint+DistanceJoint fallback. Drive over the ramp with arrow keys or on-screen buttons.',
   };
 
   String get codeSnippet => switch (this) {
@@ -94,21 +124,15 @@ enum _Demo {
           ');\n\n'
           '// Resolution uses: min(a.restitution, b.restitution)',
     shapeMixer =>
-      '// Circle\n'
-          'PhysicsBody(shape: CircleShape(r), mass: 1);\n\n'
-          '// Rectangle\n'
-          'PhysicsBody(\n'
-          '  shape: RectangleShape(w, h),\n'
-          '  mass: 1,\n'
-          ');\n\n'
-          '// Convex polygon (List<Offset> vertices)\n'
-          'PhysicsBody(\n'
-          '  shape: PolygonShape([\n'
-          '    Offset(0, -r), Offset(r, r * 0.6),\n'
-          '    Offset(-r, r * 0.6),\n'
-          '  ]),\n'
-          '  mass: 1,\n'
-          ');',
+      '// Classic shapes\n'
+          'PhysicsBody(shape: CircleShape(r), mass: 1);\n'
+          'PhysicsBody(shape: RectangleShape(w, h), mass: 1);\n'
+          'PhysicsBody(shape: PolygonShape(vertices), mass: 1);\n\n'
+          '// New shapes in the same sandbox\n'
+          'PhysicsBody(shape: CapsuleShape(...), mass: 1);\n'
+          'PhysicsBody(shape: SegmentShape(p1, p2, thickness: 3), mass: 0);\n'
+          'PhysicsBody(shape: ChainShape(points, thickness: 3), mass: 0);\n'
+          'PhysicsBody(shape: RoundedPolygonShape.rect(...), mass: 1);',
     bodyStack =>
       '// Static body (mass = 0 → infinite mass):\n'
           'PhysicsBody(\n'
@@ -123,6 +147,63 @@ enum _Demo {
           '  restitution: 0.1,\n'
           '  friction: 0.6,\n'
           ');',
+    queries =>
+      '// Ray cast against all physics bodies:\n'
+          'final hit = engine.physics.castRay(Ray(\n'
+          '  origin: Offset(0, 0),\n'
+          '  direction: Offset(1, 0),\n'
+          '  maxDistance: 500,\n'
+          '));\n\n'
+          '// All hits sorted nearest-first:\n'
+          'final hits = engine.physics.castRayAll(ray);\n\n'
+          '// Circle overlap query:\n'
+          'final overlapping = engine.physics.queryCircle(\n'
+          '  Offset(0, 0), 80.0);\n\n'
+          '// AABB overlap query:\n'
+          'final inRect = engine.physics.queryAABB(\n'
+          '  Rect.fromCenter(center: Offset.zero, width: 160, height: 120));',
+    springChain =>
+      '// Stiff distance joint (rigid rope segment):\n'
+          'engine.physics.addDistanceJoint(\n'
+          '  bodyA, bodyB,\n'
+          '  length: segmentLength,\n'
+          ');\n\n'
+          '// Soft spring (elastic connector):\n'
+          'engine.physics.addDistanceJoint(\n'
+          '  bodyA, bodyB,\n'
+          '  length: restLength,\n'
+          '  stiffness: 120.0, damping: 0.4,\n'
+          ');\n\n'
+          '// Weld — rigid compound body:\n'
+          'engine.physics.addWeldJoint(bodyA, bodyB);',
+    sensors =>
+      '// Create a sensor body (no collision resolution)\n'
+          'final sensor = PhysicsBody(\n'
+          '  position: Vector2(0, 0),\n'
+          '  shape: CircleShape(80),\n'
+          '  mass: 0,\n'
+          '  isSensor: true,   // ← key flag\n'
+          ');\n'
+          'engine.physics.addBody(sensor);\n\n'
+          '// Poll sensor events each frame:\n'
+          'engine.physics.pollSensorBeginEvents((a, b) {\n'
+          '  // a or b is the sensor body\n'
+          '});\n'
+          'engine.physics.pollSensorEndEvents((a, b) { ... });',
+    carPhysics =>
+      '// Box2D WheelJoint — spring suspension + motor:\n'
+          'final b2 = engine.physics as Box2DPhysicsEngine;\n'
+          'final joint = b2.createWheelJoint(\n'
+          '  chassis, wheel,\n'
+          '  Offset(wheel.position.x, wheel.position.y),\n'
+          '  const Offset(0, 1), // suspension axis (up)\n'
+          ');\n'
+          'joint?.setWheelSpring(45.0, 0.65); // stiffness, damping\n'
+          'joint?.setWheelMotor(12.0, 250.0);  // speed rad/s, maxTorque\n\n'
+          '// Dart fallback (no Box2D):\n'
+          'engine.physics.addPrismaticJoint(chassis, wheel, Offset(0, 1));\n'
+          'engine.physics.addDistanceJoint(chassis, wheel,\n'
+          '  length: 14, stiffness: 45, damping: 0.65);',
   };
 }
 
@@ -156,6 +237,28 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   double _initialVelocity = 220;
   bool _gravityEnabled = true;
 
+  // ── Sensor demo state ────────────────────────────────────────────────────
+  PhysicsBody? _sensorBody;
+  final List<String> _sensorLog = [];
+  static const _kMaxSensorLog = 6;
+
+  // ── Queries demo state ───────────────────────────────────────────────────
+  RayBodyHit? _queryRayHit;
+  int _queryOverlapCount = 0;
+  double _queryRayAngle = 0.0; // auto-rotating ray angle in radians
+
+  // ── Car Physics demo state ───────────────────────────────────────────────
+  bool _carLeft = false;
+  bool _carRight = false;
+  bool _carBrake = false;
+  PhysicsBody? _carChassis;
+  PhysicsBody? _carFrontWheel;
+  PhysicsBody? _carRearWheel;
+  Box2DJoint? _carFrontJoint;
+  Box2DJoint? _carRearJoint;
+  bool _carBox2D = false;
+  final FocusNode _focusNode = FocusNode();
+
   final math.Random _random = math.Random();
   Size _arenaSize = const Size(800, 500);
 
@@ -184,8 +287,44 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   @override
   void dispose() {
     _ticker.dispose();
+    _focusNode.dispose();
     _clearAll();
     super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Sensor event polling
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _pollSensorEvents() {
+    _engine.physics.pollSensorBeginEvents((a, b) {
+      final visitor = (a == _sensorBody) ? b : a;
+      _sensorLog.insert(0, 'ENTER  body#${visitor.hashCode % 1000}');
+      if (_sensorLog.length > _kMaxSensorLog) _sensorLog.removeLast();
+    });
+    _engine.physics.pollSensorEndEvents((a, b) {
+      final visitor = (a == _sensorBody) ? b : a;
+      _sensorLog.insert(0, 'EXIT   body#${visitor.hashCode % 1000}');
+      if (_sensorLog.length > _kMaxSensorLog) _sensorLog.removeLast();
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Queries demo update
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _updateQueries(Duration elapsed) {
+    // Rotate the ray angle at 60°/s
+    _queryRayAngle = (elapsed.inMicroseconds / 1_000_000.0) * (math.pi / 3.0);
+    final dir = Offset(math.cos(_queryRayAngle), math.sin(_queryRayAngle));
+    final ray = Ray(
+      origin: Offset.zero,
+      direction: dir,
+      maxDistance: _halfW * 0.9,
+    );
+    _queryRayHit = _engine.physics.castRay(ray);
+    final overlapping = _engine.physics.queryCircle(const Offset(0, 60), 60.0);
+    _queryOverlapCount = overlapping.length;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -209,6 +348,9 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       _lastTick = Duration.zero;
     }
 
+    if (_demo == _Demo.sensors) _pollSensorEvents();
+    if (_demo == _Demo.queries) _updateQueries(elapsed);
+    if (_demo == _Demo.carPhysics) _updateCarMotor();
     if (mounted) setState(() {});
   }
 
@@ -297,6 +439,27 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         _buildShapeMixer();
       case _Demo.bodyStack:
         _buildBodyStack();
+      case _Demo.sensors:
+        _sensorBody = null;
+        _sensorLog.clear();
+        _buildSensorsDemo();
+      case _Demo.queries:
+        _queryRayHit = null;
+        _queryOverlapCount = 0;
+        _buildQueriesDemo();
+      case _Demo.springChain:
+        _buildSpringChainDemo();
+      case _Demo.carPhysics:
+        _carLeft = false;
+        _carRight = false;
+        _carBrake = false;
+        _carChassis = null;
+        _carFrontWheel = null;
+        _carRearWheel = null;
+        _carFrontJoint = null;
+        _carRearJoint = null;
+        _carBox2D = false;
+        _buildCarPhysicsDemo();
     }
     if (mounted) setState(() {});
   }
@@ -607,10 +770,17 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
 
   void _buildShapeMixer() {
     _createWalls(restitution: 0.8);
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 10; i++) {
       _addShape(_random.nextInt(3));
     }
-    _statusMessage = 'Add more shapes with the buttons below';
+    _addNewShape(0);
+    _addNewShape(1);
+    _addNewShape(2);
+    _addNewShape(3);
+    for (int i = 0; i < 4; i++) {
+      _addNewShape(4);
+    }
+    _statusMessage = 'Classic + new shapes in one collision sandbox';
   }
 
   void _addShape(int type) {
@@ -814,6 +984,822 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  void _addNewShape(int type) {
+    final hw = _halfW - 30.0;
+    final hh = _halfH - 30.0;
+    final x = (_random.nextDouble() * 2 - 1) * hw;
+    final y = (_random.nextDouble() * 2 - 1) * (hh * 0.7) - hh * 0.1;
+    final vx = (_random.nextDouble() * 2 - 1) * 100;
+    final vy = (_random.nextDouble() * 2 - 1) * 100;
+    final color = Color.lerp(
+      const Color(0xFF26C6DA),
+      const Color(0xFF66BB6A),
+      _random.nextDouble(),
+    )!;
+
+    switch (type) {
+      case 0: // Capsule
+        const halfH = 18.0, r = 9.0;
+        final body = PhysicsBody(
+          position: Vector2(x, y),
+          velocity: Vector2(vx, vy),
+          shape: CapsuleShape(
+            center1: const Offset(0, -halfH),
+            center2: const Offset(0, halfH),
+            radius: r,
+          ),
+          mass: 1.2,
+          restitution: 0.6,
+          friction: 0.1,
+          drag: 0.008,
+          useGravity: true,
+        );
+        _addBody(body);
+        _world.createEntityWithComponents([
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+          RenderableComponent(
+            renderable: CustomRenderable(
+              layer: 5,
+              getBoundsCallback: () => Rect.fromCenter(
+                center: Offset.zero,
+                width: r * 2 + 4,
+                height: halfH * 2 + r * 2 + 4,
+              ),
+              onRender: (canvas, _) {
+                final paint = Paint()..color = color;
+                canvas.drawCircle(const Offset(0, -halfH), r, paint);
+                canvas.drawCircle(const Offset(0, halfH), r, paint);
+                canvas.drawRect(
+                  Rect.fromCenter(
+                    center: Offset.zero,
+                    width: r * 2,
+                    height: halfH * 2,
+                  ),
+                  paint,
+                );
+                final stroke = Paint()
+                  ..color = Colors.white.withValues(alpha: 0.35)
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = 1.2;
+                canvas.drawCircle(const Offset(0, -halfH), r, stroke);
+                canvas.drawCircle(const Offset(0, halfH), r, stroke);
+              },
+            ),
+          ),
+        ]);
+
+      case 1: // Diagonal segment (static ramp)
+        const p1 = Offset(-55, 0);
+        const p2 = Offset(55, -25);
+        const thickness = 3.0;
+        final body = PhysicsBody(
+          position: Vector2(x, y),
+          shape: SegmentShape(p1, p2, thickness: thickness),
+          mass: 0,
+          restitution: 0.5,
+          friction: 0.3,
+        );
+        _addBody(body);
+        _world.createEntityWithComponents([
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+          RenderableComponent(
+            renderable: CustomRenderable(
+              layer: 5,
+              getBoundsCallback: () => const Rect.fromLTRB(-60, -35, 60, 10),
+              onRender: (canvas, _) {
+                canvas.drawLine(
+                  p1,
+                  p2,
+                  Paint()
+                    ..color = color
+                    ..strokeWidth = thickness * 2
+                    ..strokeCap = StrokeCap.round,
+                );
+              },
+            ),
+          ),
+        ]);
+
+      case 2: // Chain (wave terrain, static)
+        final chainVerts = [
+          const Offset(-70, 10),
+          const Offset(-35, -20),
+          const Offset(0, 10),
+          const Offset(35, -20),
+          const Offset(70, 10),
+        ];
+        final body = PhysicsBody(
+          position: Vector2(x, y),
+          shape: ChainShape(chainVerts, thickness: 3.0),
+          mass: 0,
+          restitution: 0.5,
+          friction: 0.2,
+        );
+        _addBody(body);
+        _world.createEntityWithComponents([
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+          RenderableComponent(
+            renderable: CustomRenderable(
+              layer: 5,
+              getBoundsCallback: () => const Rect.fromLTRB(-75, -25, 75, 15),
+              onRender: (canvas, _) {
+                final paint = Paint()
+                  ..color = color
+                  ..strokeWidth = 5
+                  ..strokeCap = StrokeCap.round
+                  ..strokeJoin = StrokeJoin.round
+                  ..style = PaintingStyle.stroke;
+                final path = Path()..moveTo(chainVerts[0].dx, chainVerts[0].dy);
+                for (final v in chainVerts.skip(1)) {
+                  path.lineTo(v.dx, v.dy);
+                }
+                canvas.drawPath(path, paint);
+              },
+            ),
+          ),
+        ]);
+
+      case 3: // Rounded rectangle polygon
+        const hw2 = 22.0, hh2 = 16.0, cr = 6.0;
+        final body = PhysicsBody(
+          position: Vector2(x, y),
+          velocity: Vector2(vx, vy),
+          shape: RoundedPolygonShape.rect(
+            width: hw2 * 2,
+            height: hh2 * 2,
+            cornerRadius: cr,
+          ),
+          mass: 1.4,
+          restitution: 0.65,
+          friction: 0.15,
+          drag: 0.01,
+          useGravity: true,
+        );
+        _addBody(body);
+        _world.createEntityWithComponents([
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+          RenderableComponent(
+            renderable: CustomRenderable(
+              layer: 5,
+              getBoundsCallback: () => Rect.fromCenter(
+                center: Offset.zero,
+                width: hw2 * 2 + 4,
+                height: hh2 * 2 + 4,
+              ),
+              onRender: (canvas, _) {
+                canvas.drawRRect(
+                  RRect.fromRectAndRadius(
+                    Rect.fromCenter(
+                      center: Offset.zero,
+                      width: hw2 * 2,
+                      height: hh2 * 2,
+                    ),
+                    const Radius.circular(cr),
+                  ),
+                  Paint()..color = color,
+                );
+                canvas.drawRRect(
+                  RRect.fromRectAndRadius(
+                    Rect.fromCenter(
+                      center: Offset.zero,
+                      width: hw2 * 2,
+                      height: hh2 * 2,
+                    ),
+                    const Radius.circular(cr),
+                  ),
+                  Paint()
+                    ..color = Colors.white.withValues(alpha: 0.3)
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 1.2,
+                );
+              },
+            ),
+          ),
+        ]);
+
+      case 4: // Small circle (classic, for cross-shape collisions)
+        const r = 9.0;
+        final body = PhysicsBody(
+          position: Vector2(x, y),
+          velocity: Vector2(vx, vy),
+          shape: CircleShape(r),
+          mass: 0.8,
+          restitution: 0.7,
+          friction: 0.05,
+          drag: 0.005,
+          useGravity: true,
+        );
+        _addBody(body);
+        _world.createEntityWithComponents([
+          PhysicsBodyRefComponent(body),
+          TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+          RenderableComponent(
+            renderable: CircleRenderable(
+              radius: r,
+              fillColor: Colors.white.withValues(alpha: 0.55),
+              strokeColor: Colors.white.withValues(alpha: 0.3),
+              strokeWidth: 1,
+              layer: 5,
+            ),
+          ),
+        ]);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Demo: Sensors
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _buildSensorsDemo() {
+    _engine.physics.setGravity(0, 120);
+    _createWalls(restitution: 0.6);
+
+    // Large circular sensor zone in the centre
+    _sensorBody = PhysicsBody(
+      position: Vector2.zero(),
+      shape: CircleShape(80.0),
+      mass: 0,
+      isSensor: true,
+      restitution: 0,
+      friction: 0,
+    );
+    _addBody(_sensorBody!);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(_sensorBody!),
+      TransformComponent(position: Vector3.zero()),
+      RenderableComponent(
+        renderable: CustomRenderable(
+          layer: 3,
+          getBoundsCallback: () =>
+              Rect.fromCircle(center: Offset.zero, radius: 82),
+          onRender: (canvas, _) {
+            canvas.drawCircle(
+              Offset.zero,
+              80,
+              Paint()
+                ..color = const Color(0xFFFFD54F).withValues(alpha: 0.15)
+                ..style = PaintingStyle.fill,
+            );
+            canvas.drawCircle(
+              Offset.zero,
+              80,
+              Paint()
+                ..color = const Color(0xFFFFD54F).withValues(alpha: 0.7)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2,
+            );
+          },
+        ),
+      ),
+    ]);
+
+    // Drop several balls into the scene
+    for (int i = 0; i < 12; i++) {
+      _addSensorBall();
+    }
+    _statusMessage = 'Sensor zone active — watch the event log';
+  }
+
+  void _addSensorBall() {
+    const r = 11.0;
+    final hw = _halfW - 20.0;
+    final x = (_random.nextDouble() * 2 - 1) * hw;
+    final spawnY = -_halfH + r + 10;
+    final color = Color.lerp(
+      const Color(0xFF29B6F6),
+      const Color(0xFFAB47BC),
+      _random.nextDouble(),
+    )!;
+    final body = PhysicsBody(
+      position: Vector2(x, spawnY),
+      velocity: Vector2((_random.nextDouble() * 2 - 1) * 80, 0),
+      shape: CircleShape(r),
+      mass: 1.0,
+      restitution: 0.75,
+      friction: 0.05,
+      drag: 0.005,
+      useGravity: true,
+    );
+    _addBody(body);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(body),
+      TransformComponent(position: Vector3.fromOffset(Offset(x, spawnY))),
+      RenderableComponent(
+        renderable: CircleRenderable(
+          radius: r,
+          fillColor: color,
+          strokeColor: Colors.white.withValues(alpha: 0.4),
+          strokeWidth: 1.2,
+          layer: 5,
+        ),
+      ),
+    ]);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Demo: Queries
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _buildQueriesDemo() {
+    _engine.physics.setGravity(0, 100);
+    _createWalls(restitution: 0.7);
+    // Mix of bodies to query against
+    for (int i = 0; i < 18; i++) {
+      _addQueriesBody();
+    }
+    _statusMessage = 'Rotating ray + circle overlap zone active';
+  }
+
+  void _addQueriesBody() {
+    final hw = _halfW - 20.0;
+    final hh = _halfH - 20.0;
+    final x = (_random.nextDouble() * 2 - 1) * hw;
+    final y = (_random.nextDouble() * 2 - 1) * hh * 0.6;
+    final vx = (_random.nextDouble() * 2 - 1) * 80;
+    final vy = (_random.nextDouble() * 2 - 1) * 80;
+    final r = 8.0 + _random.nextDouble() * 8;
+    final body = PhysicsBody(
+      position: Vector2(x, y),
+      velocity: Vector2(vx, vy),
+      shape: CircleShape(r),
+      mass: 1.0,
+      restitution: 0.6,
+      friction: 0.05,
+      drag: 0.005,
+      useGravity: true,
+    );
+    _addBody(body);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(body),
+      TransformComponent(position: Vector3.fromOffset(Offset(x, y))),
+      RenderableComponent(
+        renderable: CircleRenderable(
+          radius: r,
+          fillColor: const Color(0xFFEF9A9A).withValues(alpha: 0.7),
+          strokeColor: Colors.white.withValues(alpha: 0.3),
+          strokeWidth: 1,
+          layer: 5,
+        ),
+      ),
+    ]);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Demo: Spring Chain (distance + weld joints)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _buildSpringChainDemo() {
+    _engine.physics.setGravity(0, 180);
+
+    // ── Spring rope: 8 bodies connected by soft distance joints ──
+    const ropeN = 8;
+    const ropeSegLen = 40.0;
+    final ropeX = -_halfW * 0.35;
+    final ropeStartY = -_halfH * 0.55;
+
+    // Static hook
+    final hook = PhysicsBody(
+      position: Vector2(ropeX, ropeStartY),
+      shape: CircleShape(6),
+      mass: 0,
+    );
+    _addBody(hook);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(hook),
+      TransformComponent(position: Vector3(ropeX, ropeStartY, 0)),
+      RenderableComponent(
+        renderable: CircleRenderable(
+          radius: 6,
+          fillColor: const Color(0xFFCE93D8),
+          strokeColor: Colors.white54,
+          strokeWidth: 1,
+          layer: 8,
+        ),
+      ),
+    ]);
+
+    PhysicsBody prev = hook;
+    for (int i = 0; i < ropeN; i++) {
+      final y = ropeStartY + (i + 1) * ropeSegLen;
+      final r = 7.0 + (i % 2) * 3.0;
+      final bob = PhysicsBody(
+        position: Vector2(ropeX, y),
+        shape: CircleShape(r),
+        mass: 1.0,
+        restitution: 0.5,
+        friction: 0.05,
+        drag: 0.008,
+        useGravity: true,
+      );
+      _addBody(bob);
+      _world.createEntityWithComponents([
+        PhysicsBodyRefComponent(bob),
+        TransformComponent(position: Vector3(ropeX, y, 0)),
+        RenderableComponent(
+          renderable: CircleRenderable(
+            radius: r,
+            fillColor: Color.lerp(
+              const Color(0xFFCE93D8),
+              const Color(0xFF7986CB),
+              i / ropeN,
+            )!,
+            strokeColor: Colors.white.withValues(alpha: 0.3),
+            strokeWidth: 1,
+            layer: 5,
+          ),
+        ),
+      ]);
+      // Soft spring distance joint
+      _engine.physics.addDistanceJoint(
+        prev,
+        bob,
+        length: ropeSegLen,
+        stiffness: 80.0,
+        damping: 0.25,
+      );
+      prev = bob;
+    }
+
+    // Give the rope a push
+    prev.velocity.x = 120;
+
+    // ── Weld chain: a rigid beam of 4 boxes weld-joined ──
+    const weldN = 4;
+    const boxW = 36.0, boxH = 18.0;
+    final weldX = _halfW * 0.25;
+    final weldY = -_halfH * 0.1;
+
+    PhysicsBody? prevWeld;
+    for (int i = 0; i < weldN; i++) {
+      final x = weldX + i * (boxW + 2);
+      final body = PhysicsBody(
+        position: Vector2(x, weldY),
+        shape: RectangleShape(boxW, boxH),
+        mass: i == 0 ? 0 : 1.5, // first is static anchor
+        restitution: 0.3,
+        friction: 0.2,
+        drag: 0.01,
+        useGravity: i > 0,
+      );
+      _addBody(body);
+      _world.createEntityWithComponents([
+        PhysicsBodyRefComponent(body),
+        TransformComponent(position: Vector3(x, weldY, 0)),
+        RenderableComponent(
+          renderable: RectangleRenderable(
+            size: const Size(boxW, boxH),
+            fillColor: const Color(0xFFFFB74D).withValues(alpha: 0.9),
+            strokeColor: Colors.white.withValues(alpha: 0.3),
+            strokeWidth: 1,
+            layer: 5,
+          ),
+        ),
+      ]);
+      if (prevWeld != null) {
+        _engine.physics.addWeldJoint(prevWeld, body);
+      }
+      prevWeld = body;
+    }
+
+    _statusMessage =
+        'Left: spring rope (distance joints)   Right: rigid beam (weld joints)';
+  }
+
+  Widget _buildSpringChainControls() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        _actionButton('Shake', const Color(0xFFCE93D8), () {
+          // Impulse on all dynamic bodies
+          for (final body in _engine.physics.bodies) {
+            if (body.mass > 0 && body.isAwake) {
+              body.applyImpulse(
+                Vector2((_random.nextDouble() * 2 - 1) * 60, -40),
+              );
+            }
+          }
+        }),
+        _actionButton(
+          'Reset',
+          const Color(0xFF78909C),
+          () => _buildDemo(_demo),
+        ),
+        const Text(
+          'spring rope  ·  weld beam',
+          style: TextStyle(
+            color: Colors.white38,
+            fontSize: 11,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Demo: Car Physics (wheel joints + curved platform)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _buildCarPhysicsDemo() {
+    _engine.physics.setGravity(0, 300);
+
+    final groundY = _halfH * 0.30;
+    final rampTopY = -_halfH * 0.08;
+
+    // ── Track: flat start → ramp up → flat peak → ramp down → flat end ──
+    final trackPoints = [
+      Offset(-_halfW * 0.9, groundY),
+      Offset(-_halfW * 0.4, groundY),
+      Offset(-_halfW * 0.05, rampTopY),
+      Offset(_halfW * 0.15, rampTopY),
+      Offset(_halfW * 0.5, groundY),
+      Offset(_halfW * 0.9, groundY),
+    ];
+    final track = PhysicsBody(
+      position: Vector2(0, 0),
+      shape: ChainShape(trackPoints, thickness: 4.0),
+      mass: 0,
+      friction: 0.75,
+      restitution: 0.05,
+    );
+    _addBody(track);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(track),
+      TransformComponent(position: Vector3(0, 0, 0)),
+      RenderableComponent(
+        renderable: CustomRenderable(
+          layer: 3,
+          getBoundsCallback: () =>
+              Rect.fromLTRB(-_halfW, rampTopY - 10, _halfW, groundY + 10),
+          onRender: (canvas, _) {
+            final paint = Paint()
+              ..color = const Color(0xFF546E7A)
+              ..strokeWidth = 5
+              ..strokeCap = StrokeCap.round
+              ..strokeJoin = StrokeJoin.round
+              ..style = PaintingStyle.stroke;
+            final path = Path()..moveTo(trackPoints[0].dx, trackPoints[0].dy);
+            for (final v in trackPoints.skip(1)) {
+              path.lineTo(v.dx, v.dy);
+            }
+            canvas.drawPath(path, paint);
+          },
+        ),
+      ),
+    ]);
+
+    // ── End-stop walls so the car can't slide off either edge ──
+    for (final x in [-_halfW * 0.92, _halfW * 0.92]) {
+      final wall = PhysicsBody(
+        position: Vector2(x, groundY - 20),
+        shape: RectangleShape(8, 40),
+        mass: 0,
+        friction: 0.5,
+        restitution: 0.1,
+      );
+      _addBody(wall);
+      _world.createEntityWithComponents([
+        PhysicsBodyRefComponent(wall),
+        TransformComponent(position: Vector3(x, groundY - 20, 0)),
+        RenderableComponent(
+          renderable: RectangleRenderable(
+            size: const Size(8, 40),
+            fillColor: const Color(0xFF37474F),
+            strokeColor: Colors.white24,
+            strokeWidth: 1,
+            layer: 3,
+          ),
+        ),
+      ]);
+    }
+
+    // ── Car chassis ──
+    const chassisW = 64.0, chassisH = 18.0;
+    const carCollisionGroup = -7;
+    final chassisX = -_halfW * 0.65;
+    final chassisY = groundY - 40.0;
+    final chassis = PhysicsBody(
+      position: Vector2(chassisX, chassisY),
+      shape: RectangleShape(chassisW, chassisH),
+      mass: 6.0,
+      friction: 0.3,
+      restitution: 0.05,
+      drag: 0.02,
+      useGravity: true,
+      groupIndex: carCollisionGroup,
+    );
+    _addBody(chassis);
+    _world.createEntityWithComponents([
+      PhysicsBodyRefComponent(chassis),
+      TransformComponent(position: Vector3(chassisX, chassisY, 0)),
+      RenderableComponent(
+        renderable: RectangleRenderable(
+          size: const Size(chassisW, chassisH),
+          fillColor: const Color(0xFF80CBC4),
+          strokeColor: Colors.white.withValues(alpha: 0.4),
+          strokeWidth: 1.5,
+          layer: 6,
+        ),
+      ),
+    ]);
+    _carChassis = chassis;
+
+    // ── Wheels ──
+    const wheelR = 12.0;
+    const wheelOffsetX = 22.0;
+    const wheelOffsetY = chassisH / 2 + wheelR + 3.0;
+
+    PhysicsBody makeWheel(double wx, double wy) {
+      final wheel = PhysicsBody(
+        position: Vector2(wx, wy),
+        shape: CircleShape(wheelR),
+        mass: 1.2,
+        friction: 0.9,
+        restitution: 0.05,
+        drag: 0.01,
+        useGravity: true,
+        groupIndex: carCollisionGroup,
+      );
+      _addBody(wheel);
+      _world.createEntityWithComponents([
+        PhysicsBodyRefComponent(wheel),
+        TransformComponent(position: Vector3(wx, wy, 0)),
+        RenderableComponent(
+          renderable: CircleRenderable(
+            radius: wheelR,
+            fillColor: const Color(0xFF37474F),
+            strokeColor: Colors.white.withValues(alpha: 0.35),
+            strokeWidth: 2,
+            layer: 7,
+          ),
+        ),
+      ]);
+      return wheel;
+    }
+
+    final rearWheel = makeWheel(
+      chassisX - wheelOffsetX,
+      chassisY + wheelOffsetY,
+    );
+    final frontWheel = makeWheel(
+      chassisX + wheelOffsetX,
+      chassisY + wheelOffsetY,
+    );
+
+    _carRearWheel = rearWheel;
+    _carFrontWheel = frontWheel;
+
+    // ── Joints: Box2D WheelJoint if native, else rigid fallback ──
+    _carBox2D = _engine.physics.stats['backend'] == 'box2d_v3';
+    if (_carBox2D) {
+      final b2 = _engine.physics as Box2DPhysicsEngine;
+      _carRearJoint = b2.createWheelJoint(
+        chassis,
+        rearWheel,
+        Offset(rearWheel.position.x, rearWheel.position.y),
+        const Offset(0, 1),
+      );
+      _carRearJoint?.setWheelSpring(45.0, 0.65);
+      _carFrontJoint = b2.createWheelJoint(
+        chassis,
+        frontWheel,
+        Offset(frontWheel.position.x, frontWheel.position.y),
+        const Offset(0, 1),
+      );
+      _carFrontJoint?.setWheelSpring(45.0, 0.65);
+    } else {
+      _engine.physics.addWeldJoint(chassis, rearWheel);
+      _engine.physics.addWeldJoint(chassis, frontWheel);
+    }
+
+    _statusMessage =
+        '← → arrow keys or buttons to drive  ·  Space / Brake to stop'
+        '  ·  Box2D: $_carBox2D';
+  }
+
+  void _updateCarMotor() {
+    const motorSpeed = 12.0;
+    const maxTorque = 250.0;
+
+    if (_carBox2D) {
+      final speed = _carLeft
+          ? -motorSpeed
+          : _carRight
+          ? motorSpeed
+          : 0.0;
+      final enabled = _carLeft || _carRight || _carBrake;
+      final torque = _carBrake ? maxTorque * 3 : maxTorque;
+      _carFrontJoint?.setWheelMotor(speed, torque, enable: enabled);
+      _carRearJoint?.setWheelMotor(speed, torque, enable: enabled);
+    } else {
+      final chassis = _carChassis;
+      if (chassis == null) return;
+      const driveForce = 2200.0;
+      const maxSpeed = 240.0;
+      if (_carLeft) {
+        if (chassis.velocity.x > -maxSpeed) {
+          chassis.applyForce(Vector2(-driveForce, 0));
+        }
+      } else if (_carRight) {
+        if (chassis.velocity.x < maxSpeed) {
+          chassis.applyForce(Vector2(driveForce, 0));
+        }
+      }
+      if (_carBrake) {
+        chassis.velocity.x *= 0.80;
+        chassis.angularVelocity *= 0.75;
+        final fw = _carFrontWheel;
+        final rw = _carRearWheel;
+        if (fw != null) fw.angularVelocity *= 0.80;
+        if (rw != null) rw.angularVelocity *= 0.80;
+      }
+    }
+  }
+
+  Widget _buildCarPhysicsControls() {
+    const accent = Color(0xFF80CBC4);
+
+    Widget driveButton({
+      required IconData icon,
+      required String label,
+      required VoidCallback onDown,
+      required VoidCallback onUp,
+    }) {
+      return Listener(
+        onPointerDown: (_) {
+          setState(onDown);
+          _focusNode.requestFocus();
+        },
+        onPointerUp: (_) => setState(onUp),
+        onPointerCancel: (_) => setState(onUp),
+        child: ElevatedButton.icon(
+          onPressed: () {},
+          icon: Icon(icon, size: 16),
+          label: Text(label, style: const TextStyle(fontSize: 11)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accent.withValues(alpha: 0.18),
+            foregroundColor: accent,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        driveButton(
+          icon: Icons.arrow_back,
+          label: 'Left',
+          onDown: () => _carLeft = true,
+          onUp: () => _carLeft = false,
+        ),
+        const SizedBox(width: 6),
+        Listener(
+          onPointerDown: (_) {
+            setState(() => _carBrake = true);
+            _focusNode.requestFocus();
+          },
+          onPointerUp: (_) => setState(() => _carBrake = false),
+          onPointerCancel: (_) => setState(() => _carBrake = false),
+          child: ElevatedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.stop, size: 16),
+            label: const Text('Brake', style: TextStyle(fontSize: 11)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.withValues(alpha: 0.18),
+              foregroundColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        driveButton(
+          icon: Icons.arrow_forward,
+          label: 'Right',
+          onDown: () => _carRight = true,
+          onUp: () => _carRight = false,
+        ),
+        const Spacer(),
+        _actionButton('Reset', accent, () => _buildDemo(_demo)),
+        const SizedBox(width: 10),
+        const Text(
+          'Arrow keys also work',
+          style: TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Stats line
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -835,15 +1821,42 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(child: _buildCanvas()),
-        _buildDemoSelector(),
-        _buildControlPanel(),
-        _buildCodeCard(),
-        const SizedBox(height: 10),
-      ],
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (_, event) {
+        if (_demo != _Demo.carPhysics) return KeyEventResult.ignored;
+        final down = event is KeyDownEvent;
+        final up = event is KeyUpEvent;
+        if (!down && !up) return KeyEventResult.ignored;
+        switch (event.logicalKey) {
+          case LogicalKeyboardKey.arrowLeft:
+            setState(() {
+              _carLeft = down;
+              if (down) _carRight = false;
+            });
+          case LogicalKeyboardKey.arrowRight:
+            setState(() {
+              _carRight = down;
+              if (down) _carLeft = false;
+            });
+          case LogicalKeyboardKey.space:
+            setState(() => _carBrake = down);
+          default:
+            return KeyEventResult.ignored;
+        }
+        return KeyEventResult.handled;
+      },
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(child: _buildCanvas()),
+          _buildDemoSelector(),
+          _buildControlPanel(),
+          _buildCodeCard(),
+          const SizedBox(height: 10),
+        ],
+      ),
     );
   }
 
@@ -867,6 +1880,31 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              if (_demo == _Demo.carPhysics) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB74D).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: const Color(0xFFFFB74D).withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: const Text(
+                    'EXPERIMENTAL',
+                    style: TextStyle(
+                      color: Color(0xFFFFCC80),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ),
+              ],
               const Spacer(),
               const Text(
                 'PhysicsEngine  ·  PhysicsBody  ·  CollisionShape',
@@ -1005,6 +2043,14 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
         return _buildShapeMixerControls();
       case _Demo.bodyStack:
         return _buildBodyStackControls();
+      case _Demo.sensors:
+        return _buildSensorsControls();
+      case _Demo.queries:
+        return _buildQueriesControls();
+      case _Demo.springChain:
+        return _buildSpringChainControls();
+      case _Demo.carPhysics:
+        return _buildCarPhysicsControls();
     }
   }
 
@@ -1164,6 +2210,31 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           const Color(0xFFFFCA28),
           () => _buildDemo(_demo),
         ),
+        _actionButton(
+          '+ Capsule',
+          const Color(0xFF26C6DA),
+          () => setState(() => _addNewShape(0)),
+        ),
+        _actionButton(
+          '+ Segment',
+          const Color(0xFF26C6DA),
+          () => setState(() => _addNewShape(1)),
+        ),
+        _actionButton(
+          '+ Chain',
+          const Color(0xFF26C6DA),
+          () => setState(() => _addNewShape(2)),
+        ),
+        _actionButton(
+          '+ Rounded',
+          const Color(0xFF26C6DA),
+          () => setState(() => _addNewShape(3)),
+        ),
+        _actionButton(
+          '+ Ball',
+          const Color(0xFF26C6DA),
+          () => setState(() => _addNewShape(4)),
+        ),
         const SizedBox(width: 12),
         const Text(
           'ball mass: 15  ·  restitution: 0.3',
@@ -1171,6 +2242,113 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
             color: Colors.white30,
             fontSize: 11,
             fontFamily: 'monospace',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSensorsControls() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _actionButton(
+              '+ Ball',
+              const Color(0xFFFFD54F),
+              () => setState(_addSensorBall),
+            ),
+            const SizedBox(height: 4),
+            _actionButton('Reset', const Color(0xFF78909C), () {
+              _sensorLog.clear();
+              _buildDemo(_demo);
+            }),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF090F1A),
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(
+                color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+              ),
+            ),
+            child: _sensorLog.isEmpty
+                ? const Text(
+                    'sensor events will appear here…',
+                    style: TextStyle(color: Colors.white30, fontSize: 10),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _sensorLog
+                        .map(
+                          (e) => Text(
+                            e,
+                            style: TextStyle(
+                              color: e.startsWith('ENTER')
+                                  ? const Color(0xFF66BB6A)
+                                  : const Color(0xFFFF7043),
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQueriesControls() {
+    final hit = _queryRayHit;
+    return Row(
+      children: [
+        _actionButton(
+          '+ Body',
+          const Color(0xFFEF9A9A),
+          () => setState(_addQueriesBody),
+        ),
+        const SizedBox(width: 8),
+        _actionButton(
+          'Reset',
+          const Color(0xFF78909C),
+          () => _buildDemo(_demo),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                hit == null
+                    ? 'ray: no hit'
+                    : 'ray hit @ (${hit.point.dx.toStringAsFixed(1)}, '
+                          '${hit.point.dy.toStringAsFixed(1)})  '
+                          'd=${hit.distance.toStringAsFixed(1)}',
+                style: const TextStyle(
+                  color: Color(0xFFEF9A9A),
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              Text(
+                'circle query ∩ $_queryOverlapCount bodies',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
           ),
         ),
       ],
