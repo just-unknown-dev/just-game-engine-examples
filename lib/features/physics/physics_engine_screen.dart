@@ -5,6 +5,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
+import '../../core/widgets/common_tag.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo mode
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,7 +232,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   // ── State ────────────────────────────────────────────────────────────────
   _Demo _demo = _Demo.particleStorm;
   String _statusMessage = '';
-  bool _showColliderDebug = true;
+  bool _showColliderDebug = false;
 
   // ── Particle Storm settings ───────────────────────────────────────────────
   int _ballCount = 200;
@@ -1882,27 +1884,15 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
               ),
               if (_demo == _Demo.carPhysics) ...[
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFB74D).withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: const Color(0xFFFFB74D).withValues(alpha: 0.55),
-                    ),
-                  ),
-                  child: const Text(
-                    'EXPERIMENTAL',
-                    style: TextStyle(
-                      color: Color(0xFFFFCC80),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
+                const CommonTag(
+                  label: 'EXPERIMENTAL',
+                  textColor: const Color(0xFFFFCC80),
+                  backgroundColor: const Color(0xFFFFB74D),
+                  borderColor: const Color(0xFFFFB74D),
+                  fontSize: 9,
+                  horizontalPadding: 8,
+                  verticalPadding: 3,
+                  letterSpacing: 0.6,
                 ),
               ],
               const Spacer(),
