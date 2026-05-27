@@ -1746,7 +1746,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           style: ElevatedButton.styleFrom(
             backgroundColor: accent.withValues(alpha: 0.18),
             foregroundColor: accent,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -1762,7 +1762,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
           onDown: () => _carLeft = true,
           onUp: () => _carLeft = false,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Listener(
           onPointerDown: (_) {
             setState(() => _carBrake = true);
@@ -1777,20 +1777,28 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.withValues(alpha: 0.18),
               foregroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         driveButton(
           icon: Icons.arrow_forward,
           label: 'Right',
           onDown: () => _carRight = true,
           onUp: () => _carRight = false,
         ),
-        const Spacer(),
+      ],
+    );
+  }
+
+  Widget _buildCarPhysicsPanelControls() {
+    const accent = Color(0xFF80CBC4);
+
+    return Row(
+      children: [
         _actionButton('Reset', accent, () => _buildDemo(_demo)),
         const SizedBox(width: 10),
         const Text(
@@ -1950,17 +1958,28 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   }
 
   Widget _buildCanvas() {
-    return GameCameraControls(
-      camera: _engine.rendering.camera,
-      enablePan: true,
-      enablePinch: true,
-      showZoomLevel: true,
-      child: GameWidget(
-        key: _canvasKey,
-        engine: _engine,
-        showFPS: true,
-        showDebug: true,
-      ),
+    return Stack(
+      children: [
+        GameCameraControls(
+          camera: _engine.rendering.camera,
+          enablePan: true,
+          enablePinch: true,
+          showZoomLevel: true,
+          child: GameWidget(
+            key: _canvasKey,
+            engine: _engine,
+            showFPS: true,
+            showDebug: true,
+          ),
+        ),
+        if (_demo == _Demo.carPhysics)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: SafeArea(top: false, child: _buildCarPhysicsControls()),
+          ),
+      ],
     );
   }
 
@@ -2040,7 +2059,7 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       case _Demo.springChain:
         return _buildSpringChainControls();
       case _Demo.carPhysics:
-        return _buildCarPhysicsControls();
+        return _buildCarPhysicsPanelControls();
     }
   }
 
