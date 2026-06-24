@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_game_engine_editor/just_game_engine_editor.dart';
 import 'core/di/app_config.dart';
 import 'core/screens/home_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  await EditorLogService.instance.runWithCapture(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  setupDependencies();
+    setupDependencies();
 
-  // Initialize the singleton game engine (all subsystems).
-  final engine = Engine();
-  await engine.initialize();
+    // Initialize the singleton game engine (all subsystems).
+    final engine = Engine();
+    await engine.initialize();
 
-  runApp(const JustEngineDemo());
+    runApp(const JustEngineDemo());
+  });
 }
 
 class JustEngineDemo extends StatelessWidget {

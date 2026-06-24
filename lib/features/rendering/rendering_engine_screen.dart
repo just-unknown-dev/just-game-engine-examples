@@ -61,10 +61,22 @@ enum _Demo {
   String get codeSnippet => switch (this) {
     primitives =>
       '// ECS Shape Components (pure data, rendered via CustomRenderable):\n'
-          'CircleComponent(radius: 36, color: Colors.blue)\n'
-          'RectangleComponent(width: 80, height: 52, cornerRadius: 10)\n'
-          'PolygonComponent(vertices: _nGon(5, 36))\n'
-          'LineComponent(end: Offset(38, 0), strokeWidth: 4, roundCaps: true)\n'
+          'CircleComponent(\n'
+          '  radius: 36,\n'
+          '  fillStyle: ShapePaintStyle(color: Colors.blue),\n'
+          ')\n'
+          'RectangleComponent(\n'
+          '  width: 80, height: 52, cornerRadius: 10,\n'
+          '  fillStyle: ShapePaintStyle(color: Colors.green),\n'
+          ')\n'
+          'PolygonComponent(\n'
+          '  vertices: _nGon(5, 36),\n'
+          '  fillStyle: ShapePaintStyle(color: Colors.orange),\n'
+          ')\n'
+          'LineComponent(\n'
+          '  end: Offset(38, 0), strokeWidth: 4, roundCaps: true,\n'
+          '  strokeStyle: ShapePaintStyle(color: Colors.deepOrange),\n'
+          ')\n'
           'CapsuleComponent(width: 44, height: 76)\n\n'
           '// Renderable primitives:\n'
           'RectangleRenderable(size: Size(150, 96), layer: 5)\n'
@@ -88,7 +100,7 @@ enum _Demo {
           '  startSize: 12, endSize: 0,\n'
           '  startColor: Colors.orange,\n'
           '  endColor: Colors.orange.withOpacity(0),\n'
-          '  speed: 40, gravity: Offset(0, -10),\n'
+          '  speed: 40, forces: [GravityForce(Offset(0, -10))],\n'
           '  emissionAngle: -pi / 2, emissionSpread: pi / 1.5,\n'
           ');',
     hierarchy =>
@@ -618,7 +630,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       TransformComponent(position: Vector3.fromOffset(const Offset(-320, row))),
       CircleComponent(
         radius: 36,
-        color: const Color(0xFF29B6F6),
+        fillStyle: const ShapePaintStyle(color: Color(0xFF29B6F6)),
         filled: true,
         strokeWidth: 2.5,
       ),
@@ -638,7 +650,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
         width: 80,
         height: 52,
         cornerRadius: 10,
-        color: const Color(0xFF66BB6A),
+        fillStyle: const ShapePaintStyle(color: Color(0xFF66BB6A)),
         filled: true,
         strokeWidth: 2.5,
       ),
@@ -659,7 +671,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
           final a = -math.pi / 2 + i * 2 * math.pi / 5;
           return Offset(math.cos(a) * 36, math.sin(a) * 36);
         }),
-        color: const Color(0xFFFFA040),
+        fillStyle: const ShapePaintStyle(color: Color(0xFFFFA040)),
         filled: true,
         strokeWidth: 2.5,
       ),
@@ -678,7 +690,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       LineComponent(
         start: const Offset(-38, 0),
         end: const Offset(38, 0),
-        color: const Color(0xFFFF7043),
+        strokeStyle: const ShapePaintStyle(color: Color(0xFFFF7043)),
         strokeWidth: 4,
         roundCaps: true,
       ),
@@ -696,7 +708,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
       CapsuleComponent(
         width: 44,
         height: 76,
-        color: const Color(0xFFAB47BC),
+        fillStyle: const ShapePaintStyle(color: Color(0xFFAB47BC)),
         filled: true,
         strokeWidth: 2.5,
       ),
@@ -788,7 +800,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
           endColor: const Color(0x00FF2020),
           speed: 35,
           speedVariation: 20,
-          gravity: const Offset(0, -10),
+          forces: const [GravityForce(Offset(0, -10))],
           emissionAngle: -math.pi / 2,
           emissionSpread: math.pi / 1.8,
           layer: 5,
@@ -819,7 +831,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
           endColor: const Color(0x0040AAFF),
           speed: 50,
           speedVariation: 30,
-          gravity: const Offset(0, 4),
+          forces: const [GravityForce(Offset(0, 4))],
           emissionAngle: 0,
           emissionSpread: math.pi * 2,
           layer: 5,
@@ -935,10 +947,11 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
               final r = i.isEven ? 64.0 : 28.0;
               final a = -math.pi / 2 + i * math.pi / 5;
               final p = Offset(math.cos(a) * r, math.sin(a) * r);
-              if (i == 0)
+              if (i == 0) {
                 path.moveTo(p.dx, p.dy);
-              else
+              } else {
                 path.lineTo(p.dx, p.dy);
+              }
             }
             path.close();
             canvas.drawPath(
@@ -1023,10 +1036,11 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
               final t = i * math.pi / 180;
               final x = 55 * math.sin(3 * t + math.pi / 4);
               final y = 55 * math.sin(2 * t);
-              if (i == 0)
+              if (i == 0) {
                 path.moveTo(x, y);
-              else
+              } else {
                 path.lineTo(x, y);
+              }
             }
             canvas.drawPath(path, paint);
           },
@@ -1142,7 +1156,7 @@ class _RenderingEngineScreenState extends State<RenderingEngineScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;

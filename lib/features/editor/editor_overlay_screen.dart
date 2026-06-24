@@ -72,11 +72,11 @@ class _EditorOverlayScreenState extends State<EditorOverlayScreen>
   Future<void> _initializeEngine() async {
     // Initialize the engine first
     await _engine.initialize();
-    
+
     // Configure systems (before starting)
     _configureWorldSystems();
     _spawnBackdrop();
-    
+
     // Register the editor plugin after initialization
     _initPlugin();
   }
@@ -103,6 +103,14 @@ class _EditorOverlayScreenState extends State<EditorOverlayScreen>
 
   void _onPluginChanged() {
     if (mounted) setState(() {});
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    // On hot-reload, re-register custom components so newly generated
+    // descriptors (from a build_runner run) are picked up immediately.
+    _plugin?.reassemble();
   }
 
   @override
