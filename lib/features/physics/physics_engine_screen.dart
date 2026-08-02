@@ -259,6 +259,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   Box2DJoint? _carFrontJoint;
   Box2DJoint? _carRearJoint;
   bool _carBox2D = false;
+  double _carMotorSpeed = 200.0;
+  double _carMaxTorque = 400.0;
   final FocusNode _focusNode = FocusNode();
 
   final math.Random _random = math.Random();
@@ -1522,9 +1524,22 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
       Offset(_halfW * 0.5, groundY),
       Offset(_halfW * 0.9, groundY),
     ];
+    // Box2D's open (non-loop) chain shape treats the first and last points
+    // as ghost vertices only — used to smooth the normal at the adjacent
+    // joint, never collidable themselves (see b2CreateChain: a chain of n
+    // points yields only n-3 real segments, spanning points[1..n-2]).
+    // Passing trackPoints directly would silently drop the first and last
+    // visual segments from collision — exactly where the car spawns — so
+    // it fell straight through. Extrapolate one extra ghost point beyond
+    // each end to push all of trackPoints into the collidable interior.
+    final chainPoints = [
+      trackPoints[0] * 2 - trackPoints[1],
+      ...trackPoints,
+      trackPoints.last * 2 - trackPoints[trackPoints.length - 2],
+    ];
     final track = PhysicsBody(
       position: Vector2(0, 0),
-      shape: ChainShape(trackPoints, thickness: 4.0),
+      shape: ChainShape(chainPoints, thickness: 4.0),
       mass: 0,
       friction: 0.75,
       restitution: 0.05,
@@ -1685,8 +1700,8 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   }
 
   void _updateCarMotor() {
-    const motorSpeed = 12.0;
-    const maxTorque = 250.0;
+    final motorSpeed = _carMotorSpeed;
+    final maxTorque = _carMaxTorque;
 
     if (_carBox2D) {
       final speed = _carLeft
@@ -1701,8 +1716,11 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
     } else {
       final chassis = _carChassis;
       if (chassis == null) return;
-      const driveForce = 2200.0;
-      const maxSpeed = 240.0;
+      // Scale the Dart-fallback force/cap with the same sliders so both
+      // backends respond to the UI the same way, even though this path
+      // drives the chassis directly rather than spinning a wheel motor.
+      final driveForce = motorSpeed * 145.0;
+      final maxSpeed = motorSpeed * 14.5;
       if (_carLeft) {
         if (chassis.velocity.x > -maxSpeed) {
           chassis.applyForce(Vector2(-driveForce, 0));
@@ -1797,13 +1815,50 @@ class _PhysicsEngineScreenState extends State<PhysicsEngineScreen>
   Widget _buildCarPhysicsPanelControls() {
     const accent = Color(0xFF80CBC4);
 
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _actionButton('Reset', accent, () => _buildDemo(_demo)),
-        const SizedBox(width: 10),
-        const Text(
-          'Arrow keys also work',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
+        Row(
+          children: [
+            const Text(
+              'Speed ',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Expanded(
+              child: Slider(
+                value: _carMotorSpeed,
+                min: 50,
+                max: 1000,
+                divisions: 56,
+                label: _carMotorSpeed.round().toString(),
+                onChanged: (v) => setState(() => _carMotorSpeed = v),
+              ),
+            ),
+            const Text(
+              'Torque ',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Expanded(
+              child: Slider(
+                value: _carMaxTorque,
+                min: 100,
+                max: 12000,
+                divisions: 46,
+                label: _carMaxTorque.round().toString(),
+                onChanged: (v) => setState(() => _carMaxTorque = v),
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            _actionButton('Reset', accent, () => _buildDemo(_demo)),
+            const SizedBox(width: 10),
+            const Text(
+              'Arrow keys also work',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
         ),
       ],
     );
