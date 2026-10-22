@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "frameWidth": 46,
+    "frameHeight": 55,
+    "columns": 10,
+    "rows": 1
+  },
+  "clips": {
+    "idle": {
+      "row": 0,
+      "fps": 12,
+      "loop": true
+    }
+  }
+}

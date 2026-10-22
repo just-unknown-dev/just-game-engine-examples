@@ -1,0 +1,521 @@
+{
+  "version": 10,
+  "name": "lantern_square",
+  "mode": "2d",
+  "entities": [
+    {
+      "name": "Night Sky",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": -40.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 1000.0,
+            "height": 520.0,
+            "fillStyle": {
+              "color": 4294967295,
+              "blendMode": "modulate",
+              "gradient": {
+                "kind": "linear",
+                "colors": [
+                  4278650639,
+                  4279903102,
+                  4280825235
+                ],
+                "begin": {
+                  "x": 0.0,
+                  "y": -1.0
+                },
+                "end": {
+                  "x": 0.0,
+                  "y": 1.0
+                }
+              }
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "background",
+            "layer": -100,
+            "zOrder": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paving",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 150.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 1000.0,
+            "height": 200.0,
+            "fillStyle": {
+              "color": 4281812815,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "background",
+            "layer": -10,
+            "zOrder": 0
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "ground"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lantern West",
+      "parentName": null,
+      "prefab": {
+        "path": "assets/prefabs/lantern.prefab.json",
+        "overrides": [
+          {
+            "target": "lantern",
+            "component": "TransformComponent",
+            "field": "position",
+            "value": {
+              "x": -240.0,
+              "y": 50.0,
+              "z": 0.0
+            }
+          },
+          {
+            "target": "glow",
+            "component": "CircleComponent",
+            "field": "fillStyle",
+            "value": {
+              "color": 4294967295,
+              "blendMode": "modulate",
+              "gradient": {
+                "kind": "radial",
+                "colors": [
+                  2575358207,
+                  859882751,
+                  4244735
+                ],
+                "center": {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                "radius": 0.5
+              }
+            }
+          },
+          {
+            "target": "flame",
+            "component": "CircleComponent",
+            "field": "fillStyle",
+            "value": {
+              "color": 4289979900,
+              "blendMode": "modulate"
+            }
+          }
+        ],
+        "names": {
+          "flame": "Blue Flame"
+        }
+      }
+    },
+    {
+      "name": "Lantern Centre",
+      "parentName": null,
+      "prefab": {
+        "path": "assets/prefabs/lantern.prefab.json",
+        "overrides": [
+          {
+            "target": "lantern",
+            "component": "TransformComponent",
+            "field": "position",
+            "value": {
+              "x": 0.0,
+              "y": 50.0,
+              "z": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lantern East",
+      "parentName": null,
+      "prefab": {
+        "path": "assets/prefabs/lantern.prefab.json",
+        "overrides": [
+          {
+            "target": "lantern",
+            "component": "TransformComponent",
+            "field": "position",
+            "value": {
+              "x": 240.0,
+              "y": 50.0,
+              "z": 0.0
+            }
+          },
+          {
+            "target": "flame",
+            "component": "CircleComponent",
+            "field": "fillStyle",
+            "value": {
+              "color": 4284572001,
+              "blendMode": "modulate"
+            }
+          }
+        ],
+        "removed": [
+          "glow"
+        ],
+        "names": {
+          "flame": "Cold Wick"
+        }
+      }
+    },
+    {
+      "name": "Crate Spawn 1",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": -120.0,
+              "y": 28.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 12.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4283289825,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 2.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 4
+          }
+        },
+        {
+          "type": "SpawnComponent",
+          "fields": {
+            "spawner": "crate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crate Spawn 2",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 120.0,
+              "y": 28.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 12.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4283289825,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 2.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 4
+          }
+        },
+        {
+          "type": "SpawnComponent",
+          "fields": {
+            "spawner": "crate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Firefly Spawn 1",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": -170.0,
+              "y": -150.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 8.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 2865168128,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 4
+          }
+        },
+        {
+          "type": "SpawnComponent",
+          "fields": {
+            "spawner": "firefly"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Firefly Spawn 2",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 60.0,
+              "y": -190.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 8.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 2865168128,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 4
+          }
+        },
+        {
+          "type": "SpawnComponent",
+          "fields": {
+            "spawner": "firefly"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Firefly Spawn 3",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 190.0,
+              "y": -120.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 8.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 2865168128,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 4
+          }
+        },
+        {
+          "type": "SpawnComponent",
+          "fields": {
+            "spawner": "firefly"
+          }
+        }
+      ]
+    }
+  ]
+}

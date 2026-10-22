@@ -135,24 +135,27 @@ class _StorageSignalsScreenState extends State<StorageSignalsScreen> {
     try {
       _storage = await JustStorage.standard();
       await _loadPersistedValues();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _statusMessage = '';
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _statusMessage = 'Error: $e';
         });
+      }
     }
   }
 
   Future<void> _loadPersistedValues() async {
     final counter = await _storage.read('counter');
-    if (counter != null)
+    if (counter != null) {
       _persistedCounterSignal.value = int.tryParse(counter) ?? 0;
+    }
 
     final name = await _storage.read('player_name');
     if (name != null) _playerNameSignal.value = name;
@@ -619,7 +622,7 @@ class _StorageSignalsScreenState extends State<StorageSignalsScreen> {
                   ),
                   SignalBuilder<String>(
                     signal: _playerNameSignal,
-                    builder: (_, name, __) => Text(
+                    builder: (_, name, _) => Text(
                       name,
                       style: const TextStyle(
                         color: Colors.white,
@@ -645,7 +648,7 @@ class _StorageSignalsScreenState extends State<StorageSignalsScreen> {
                   ),
                   SignalBuilder<int>(
                     signal: _highScoreSignal,
-                    builder: (_, score, __) => Text(
+                    builder: (_, score, _) => Text(
                       '$score',
                       style: TextStyle(
                         color: _demo.accentColor,
@@ -776,7 +779,7 @@ class _StorageSignalsScreenState extends State<StorageSignalsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;

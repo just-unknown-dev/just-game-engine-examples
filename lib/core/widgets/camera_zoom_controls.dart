@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_game_engine/widgets.dart';
 
 /// Delegates to [GameCameraControls] from the engine package.
 ///

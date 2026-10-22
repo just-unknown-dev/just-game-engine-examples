@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
+import '../../core/engine/demo_engine.dart';
 import '../../core/widgets/camera_zoom_controls.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,58 +50,97 @@ enum _EffectType {
     colorGrade => 4,
   };
 
-  String get codeSnippet => switch (this) {
+  /// The pass as a 2.x post-process entity. Vignette and chromatic use the
+  /// shaders bundled in assets/shaders; the others name a shader you would
+  /// write with the same uniform layout.
+  String get codeSnippet => '$_setup\n\n${switch (this) {
     vignette =>
-      'ShaderComponent(\n'
-          '  program: vignetteProgram,\n'
-          '  isPostProcess: true,\n'
-          '  passOrder: $passOrder,\n'
-          '  setUniforms: (shader, w, h, t) {\n'
-          '    shader.setFloat(0, w); // uResolution.x\n'
-          '    shader.setFloat(1, h); // uResolution.y\n'
-          '  },\n'
-          ')',
+      '// assets/shaders/vignette_grade.frag: uResolution\n'
+          'final program = await FragmentProgram.fromAsset(\n'
+          '  \'assets/shaders/vignette_grade.frag\',\n'
+          ');\n'
+          'final vignette = world.createEntityWithComponents([\n'
+          '  ShaderComponent(\n'
+          '    program: program,\n'
+          '    isPostProcess: true,\n'
+          '    passOrder: $passOrder,\n'
+          '    setUniforms: (shader, w, h, t) {\n'
+          '      shader.setFloat(0, w); // uResolution.x\n'
+          '      shader.setFloat(1, h); // uResolution.y\n'
+          '    },\n'
+          '  ),\n'
+          '], name: \'Vignette\');',
     bloom =>
-      'ShaderComponent(\n'
-          '  program: bloomProgram,\n'
-          '  isPostProcess: true,\n'
-          '  passOrder: $passOrder, // innermost\n'
-          '  setUniforms: (shader, w, h, t) {\n'
-          '    shader.setFloat(0, w);\n'
-          '    shader.setFloat(1, h);\n'
-          '    shader.setFloat(2, t); // uTime (animated)\n'
-          '  },\n'
-          ')',
+      'world.createEntityWithComponents([\n'
+          '  ShaderComponent(\n'
+          '    program: bloomProgram, // your bloom.frag\n'
+          '    isPostProcess: true,\n'
+          '    passOrder: $passOrder, // innermost: sees the raw scene\n'
+          '    setUniforms: (shader, w, h, t) {\n'
+          '      shader.setFloat(0, w);\n'
+          '      shader.setFloat(1, h);\n'
+          '      shader.setFloat(2, t); // uTime = engine.time.totalTime\n'
+          '    },\n'
+          '  ),\n'
+          '], name: \'Bloom\');',
     scanlines =>
-      'ShaderComponent(\n'
-          '  program: scanlinesProgram,\n'
-          '  isPostProcess: true,\n'
-          '  passOrder: $passOrder,\n'
-          '  setUniforms: (shader, w, h, t) {\n'
-          '    shader.setFloat(0, t); // uTime (scrolling)\n'
-          '  },\n'
-          ')',
+      'world.createEntityWithComponents([\n'
+          '  ShaderComponent(\n'
+          '    program: scanlinesProgram, // your scanlines.frag\n'
+          '    isPostProcess: true,\n'
+          '    passOrder: $passOrder,\n'
+          '    setUniforms: (shader, w, h, t) {\n'
+          '      shader.setFloat(0, w);\n'
+          '      shader.setFloat(1, h);\n'
+          '      shader.setFloat(2, t); // uTime (scrolling)\n'
+          '    },\n'
+          '  ),\n'
+          '], name: \'Scanlines\');',
     chromaticAberration =>
-      'ShaderComponent(\n'
-          '  program: chromaticProgram,\n'
-          '  isPostProcess: true,\n'
-          '  passOrder: $passOrder,\n'
-          '  setUniforms: (shader, w, h, t) {\n'
-          '    shader.setFloat(0, w);\n'
-          '    shader.setFloat(1, h);\n'
-          '    shader.setFloat(2, 0.004); // aberration strength\n'
-          '  },\n'
-          ')',
+      '// assets/shaders/chromatic_aberration.frag:\n'
+          '// uResolution, uStrength\n'
+          'final program = await FragmentProgram.fromAsset(\n'
+          '  \'assets/shaders/chromatic_aberration.frag\',\n'
+          ');\n'
+          'world.createEntityWithComponents([\n'
+          '  ShaderComponent(\n'
+          '    program: program,\n'
+          '    isPostProcess: true,\n'
+          '    passOrder: $passOrder,\n'
+          '    setUniforms: (shader, w, h, t) {\n'
+          '      shader.setFloat(0, w);\n'
+          '      shader.setFloat(1, h);\n'
+          '      shader.setFloat(2, 0.004); // uStrength (UV units)\n'
+          '    },\n'
+          '  ),\n'
+          '], name: \'Chromatic\');',
     colorGrade =>
-      'ShaderComponent(\n'
-          '  program: colorGradeProgram,\n'
-          '  isPostProcess: true,\n'
-          '  passOrder: $passOrder, // outermost\n'
-          '  setUniforms: (shader, w, h, t) {\n'
-          '    shader.setFloat(0, 0.12); // tint intensity\n'
-          '  },\n'
-          ')',
-  };
+      'world.createEntityWithComponents([\n'
+          '  ShaderComponent(\n'
+          '    program: colorGradeProgram, // your grade.frag\n'
+          '    isPostProcess: true,\n'
+          '    passOrder: $passOrder, // outermost: sees every other pass\n'
+          '    setUniforms: (shader, w, h, t) {\n'
+          '      shader.setFloat(0, w);\n'
+          '      shader.setFloat(1, h);\n'
+          '      shader.setFloat(2, 0.12); // tint intensity\n'
+          '    },\n'
+          '  ),\n'
+          '], name: \'Color Grade\');',
+  }}\n\n'
+      '// Switch a pass without rebuilding:\n'
+      '//   entity.getComponent<ShaderComponent>()!.enabled = false;\n'
+      '// Destroying the entity (or removing PostProcessSystem) takes\n'
+      '// its pass off engine.rendering.';
+
+  static const String _setup =
+      '// Not a default system: add it once per world.\n'
+      'world.addSystem(PostProcessSystem(\n'
+      '  engine.rendering,\n'
+      '  getTime: () => engine.time.totalTime,\n'
+      '));\n'
+      '// Passes need Impeller; on the web and Skia they are skipped\n'
+      '// with one log line (ShaderFilterSupport.isSupported).';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -318,8 +358,10 @@ class PostProcessingScreen extends StatefulWidget {
 
 class _PostProcessingScreenState extends State<PostProcessingScreen>
     with SingleTickerProviderStateMixin {
-  late final Engine _engine;
-  late final World _world;
+  // The app's shared 2-D engine: already started, and driven by the
+  // GameWidget below. The ticker only animates the overlay and the HUD.
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
   late final Ticker _ticker;
 
   Duration _lastTick = Duration.zero;
@@ -331,8 +373,6 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _world = _engine.world;
     _ticker = createTicker(_onTick)..start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _buildScene());
   }
@@ -340,8 +380,10 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
   @override
   void dispose() {
     _ticker.dispose();
-    _world.clearSystems();
-    _world.destroyAllEntities();
+    // Destroys the scene and removes the systems this demo added — a
+    // PostProcessSystem takes its passes off the renderer as it goes — and
+    // leaves the engine running.
+    DemoEngine.reset(_engine);
     super.dispose();
   }
 
@@ -353,20 +395,15 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
     final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
     _lastTick = elapsed;
     _elapsed += dt;
-    _world.update(dt);
     if (mounted) setState(() {});
   }
 
   // ── Scene setup ───────────────────────────────────────────────────────────
 
   void _buildScene() {
-    _world.clearSystems();
-    _world.destroyAllEntities();
-    _engine.rendering.camera
-      ..setPosition(Offset.zero)
-      ..setZoom(1.0)
-      ..smoothing = false;
-    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
+    // A clean world with the engine's own RenderSystem; the camera goes
+    // back to the origin at zoom 1.
+    DemoEngine.reset(_engine, include: const {DefaultSystem.rendering});
     _world.addSystem(_PulseSystem()..priority = 75);
     _world.addSystem(_OrbitSystem()..priority = 70);
     _world.addSystem(_DriftSystem()..priority = 65);
@@ -601,12 +638,19 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
             'ShaderComponent  ·  PostProcessSystem  ·  PostProcessPass',
             style: TextStyle(color: Color(0xFF5FD1FF), fontSize: 11),
           ),
+          const SizedBox(height: 3),
+          Text(
+            'Canvas preview of the pass chain (works on every renderer). '
+            'Real GLSL passes on this device: '
+            '${ShaderFilterSupport.isSupported ? 'supported (Impeller)' : 'skipped with a log line (web / Skia)'}.',
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
+          ),
           const SizedBox(height: 4),
           Text(
             'Entities: ${_world.entities.length}   |   '
             'Systems: ${_world.systems.length}   |   '
             'Active passes: ${_activeEffects.length}   |   '
-            'Zoom: ${_engine.rendering.camera.zoom.toStringAsFixed(2)}x',
+            'Zoom: ${_engine.cameraSystem.mainCamera.zoom.toStringAsFixed(2)}x',
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 6),
@@ -642,11 +686,11 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
 
   Widget _buildCanvas() {
     return CameraZoomControls(
-      camera: _engine.rendering.camera,
+      camera: _engine.cameraSystem.mainCamera,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          GameWidget(engine: _engine, showFPS: true, showDebug: true),
+          GameWidget(engine: _engine, showFPS: true),
 
           // Simulated post-process overlays rendered as a chained Canvas pass —
           // mirrors what ShaderComponent(isPostProcess: true) + PostProcessPass
@@ -691,7 +735,7 @@ class _PostProcessingScreenState extends State<PostProcessingScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               itemCount: _EffectType.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
                 final effect = _EffectType.values[i];
                 final active = _activeEffects.contains(effect);

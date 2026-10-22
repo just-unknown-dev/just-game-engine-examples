@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "shine": {
+    "colour": 3238002687,
+    "width": 0.25,
+    "angle": 25.0,
+    "duration": 0.7,
+    "interval": 1.2
+  }
+}

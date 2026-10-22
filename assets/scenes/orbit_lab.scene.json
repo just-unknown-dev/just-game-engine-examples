@@ -1,0 +1,585 @@
+{
+  "version": 10,
+  "name": "orbit_lab",
+  "mode": "2d",
+  "entities": [
+    {
+      "name": "Lab Camera",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "VirtualCameraComponent",
+          "fields": {
+            "priority": 10,
+            "enabled": true,
+            "zoom": 1.15,
+            "dutch": 0.06
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backdrop",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 1400.0,
+            "height": 900.0,
+            "fillStyle": {
+              "color": 4294967295,
+              "blendMode": "modulate",
+              "gradient": {
+                "kind": "radial",
+                "colors": [
+                  4279899206,
+                  4278650639
+                ],
+                "center": {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                "radius": 0.5
+              }
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "background",
+            "layer": -100,
+            "zOrder": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orbit A",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 130.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 1090519039,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "background",
+            "layer": -50,
+            "zOrder": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orbit B",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 220.0,
+            "fillStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 822083583,
+              "blendMode": "modulate"
+            },
+            "filled": false,
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "background",
+            "layer": -50,
+            "zOrder": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sun",
+      "parentName": null,
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 42.0,
+            "fillStyle": {
+              "color": 4294967295,
+              "blendMode": "modulate",
+              "gradient": {
+                "kind": "radial",
+                "colors": [
+                  4294964637,
+                  4294947584,
+                  4294930176
+                ],
+                "center": {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                "radius": 0.5
+              }
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 5
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "star"
+            ]
+          }
+        },
+        {
+          "type": "SpinComponent",
+          "fields": {
+            "speed": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "name": "Planet A",
+      "parentName": "Sun",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 130.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 15.0,
+            "fillStyle": {
+              "color": 4280923894,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4289979900,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 2.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 6
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "planet"
+            ]
+          }
+        },
+        {
+          "type": "SpinComponent",
+          "fields": {
+            "speed": 2.4
+          }
+        }
+      ]
+    },
+    {
+      "name": "Moon A",
+      "parentName": "Planet A",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 162.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 6.0,
+            "fillStyle": {
+              "color": 4291811548,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 7
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "moon"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Planet B",
+      "parentName": "Sun",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": -220.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 22.0,
+            "fillStyle": {
+              "color": 4284922730,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4291356361,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 2.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 6
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "planet"
+            ]
+          }
+        },
+        {
+          "type": "SpinComponent",
+          "fields": {
+            "speed": -1.3
+          }
+        }
+      ]
+    },
+    {
+      "name": "Moon B1",
+      "parentName": "Planet B",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": -220.0,
+              "y": -44.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 7.0,
+            "fillStyle": {
+              "color": 4294276207,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 7
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "moon"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Moon B2",
+      "parentName": "Planet B",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": -262.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 5.0,
+            "fillStyle": {
+              "color": 4294953512,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 7
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "moon"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

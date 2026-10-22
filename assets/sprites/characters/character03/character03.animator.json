@@ -1,0 +1,116 @@
+{
+  "version": 2,
+  "atlas": "assets/sprites/characters/character03/character03.atlas.json",
+  "entry": "idle",
+  "parameters": [
+    {
+      "name": "speed",
+      "type": "float",
+      "binding": "speed"
+    },
+    {
+      "name": "vx",
+      "type": "float",
+      "binding": "velocityX"
+    },
+    {
+      "name": "vy",
+      "type": "float",
+      "binding": "velocityY"
+    },
+    {
+      "name": "faceX",
+      "type": "float",
+      "default": 0
+    },
+    {
+      "name": "faceY",
+      "type": "float",
+      "default": 1
+    }
+  ],
+  "states": [
+    {
+      "name": "idle",
+      "x": 80.0,
+      "y": 80.0,
+      "blend": {
+        "type": "2d",
+        "parameter": "faceX",
+        "parameterY": "faceY",
+        "motions": [
+          {
+            "clip": "idle_right",
+            "x": 1
+          },
+          {
+            "clip": "idle_left",
+            "x": -1
+          },
+          {
+            "clip": "idle_down",
+            "y": 1
+          },
+          {
+            "clip": "idle_up",
+            "y": -1
+          }
+        ]
+      }
+    },
+    {
+      "name": "run",
+      "x": 320.0,
+      "y": 80.0,
+      "blend": {
+        "type": "2d",
+        "parameter": "vx",
+        "parameterY": "vy",
+        "motions": [
+          {
+            "clip": "run_right",
+            "x": 120
+          },
+          {
+            "clip": "run_left",
+            "x": -120
+          },
+          {
+            "clip": "run_down",
+            "y": 120
+          },
+          {
+            "clip": "run_up",
+            "y": -120
+          }
+        ]
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "idle",
+      "to": "run",
+      "duration": 0.1,
+      "conditions": [
+        {
+          "param": "speed",
+          "op": ">",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "from": "run",
+      "to": "idle",
+      "duration": 0.1,
+      "conditions": [
+        {
+          "param": "speed",
+          "op": "<=",
+          "value": 10
+        }
+      ]
+    }
+  ]
+}

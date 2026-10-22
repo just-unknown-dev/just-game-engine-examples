@@ -159,17 +159,19 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
         )
       ''');
       await _refresh();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _statusMessage = '';
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _statusMessage = 'Error: $e';
         });
+      }
     }
   }
 
@@ -771,7 +773,7 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
               const Color(0xFF29B6F6),
               SignalBuilder<int>(
                 signal: _totalSignal,
-                builder: (_, v, __) => _bigValue('$v'),
+                builder: (_, v, _) => _bigValue('$v'),
               ),
               'Signal<int>',
             ),
@@ -781,7 +783,7 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
               const Color(0xFFFFCA28),
               SignalBuilder<String>(
                 signal: _topNameSignal,
-                builder: (_, v, __) => _bigValue(v, size: 22),
+                builder: (_, v, _) => _bigValue(v, size: 22),
               ),
               'Signal<String>',
             ),
@@ -791,7 +793,7 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
               _demo.accentColor,
               SignalBuilder<int>(
                 signal: _topScoreSignal,
-                builder: (_, v, __) => _bigValue('$v pts'),
+                builder: (_, v, _) => _bigValue('$v pts'),
               ),
               'Signal<int>',
             ),
@@ -801,7 +803,7 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
               const Color(0xFF66BB6A),
               SignalBuilder<int>(
                 signal: _avgScoreSignal,
-                builder: (_, v, __) => _bigValue('$v'),
+                builder: (_, v, _) => _bigValue('$v'),
               ),
               'Signal<int>',
             ),
@@ -889,7 +891,7 @@ class _DatabaseSignalsScreenState extends State<DatabaseSignalsScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;

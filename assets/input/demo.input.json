@@ -1,0 +1,463 @@
+{
+  "format": "just_inputs",
+  "version": 3,
+  "name": "input_demo",
+  "nextId": 46,
+  "settings": {
+    "pressPoint": 0.5,
+    "releaseRatio": 0.75,
+    "holdTime": 0.4,
+    "tapTime": 0.2,
+    "slowTapTime": 0.5,
+    "multiTapDelay": 0.75,
+    "stickDeadzoneMin": 0.125,
+    "stickDeadzoneMax": 0.925,
+    "axisDeadzoneMin": 0.125,
+    "axisDeadzoneMax": 0.925
+  },
+  "players": {
+    "max": 4,
+    "joining": "onJoinAction",
+    "joinActions": [
+      "ui/join"
+    ],
+    "autoJoinFirst": true,
+    "autoSwitch": true
+  },
+  "schemes": [
+    {
+      "name": "Keyboard & Mouse",
+      "group": "KeyboardMouse",
+      "devices": [
+        {
+          "layout": "Keyboard"
+        },
+        {
+          "layout": "Mouse",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "Gamepad",
+      "group": "Gamepad",
+      "devices": [
+        {
+          "layout": "Gamepad"
+        }
+      ]
+    },
+    {
+      "name": "Touch",
+      "group": "Touch",
+      "devices": [
+        {
+          "layout": "OnScreen"
+        },
+        {
+          "layout": "Touchscreen",
+          "optional": true
+        }
+      ]
+    }
+  ],
+  "onScreen": [
+    {
+      "id": "moveStick",
+      "kind": "stick",
+      "anchor": [
+        -0.72,
+        0.5
+      ],
+      "size": 0.3,
+      "mode": "floating",
+      "axis": "both",
+      "region": [
+        0.0,
+        0.3,
+        0.45,
+        1.0
+      ]
+    },
+    {
+      "id": "jump",
+      "kind": "button",
+      "anchor": [
+        0.84,
+        0.6
+      ],
+      "size": 0.15,
+      "label": "JUMP"
+    },
+    {
+      "id": "fire",
+      "kind": "button",
+      "anchor": [
+        0.6,
+        0.76
+      ],
+      "size": 0.14,
+      "label": "FIRE"
+    },
+    {
+      "id": "dash",
+      "kind": "button",
+      "anchor": [
+        0.86,
+        0.22
+      ],
+      "size": 0.13,
+      "label": "DASH"
+    },
+    {
+      "id": "pause",
+      "kind": "button",
+      "anchor": [
+        0.0,
+        -0.82
+      ],
+      "size": 0.1,
+      "label": "II"
+    },
+    {
+      "id": "join",
+      "kind": "button",
+      "anchor": [
+        0.25,
+        -0.78
+      ],
+      "size": 0.12,
+      "label": "JOIN"
+    }
+  ],
+  "maps": [
+    {
+      "id": "m1",
+      "name": "player",
+      "enabled": true,
+      "actions": [
+        {
+          "id": "a2",
+          "name": "move",
+          "type": "vector2",
+          "bindings": [
+            {
+              "id": "b3",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "composite": "2DVector",
+              "name": "WASD",
+              "params": {
+                "mode": "digitalNormalized"
+              },
+              "parts": [
+                {
+                  "id": "b4",
+                  "part": "up",
+                  "path": "<Keyboard>/w"
+                },
+                {
+                  "id": "b5",
+                  "part": "down",
+                  "path": "<Keyboard>/s"
+                },
+                {
+                  "id": "b6",
+                  "part": "left",
+                  "path": "<Keyboard>/a"
+                },
+                {
+                  "id": "b7",
+                  "part": "right",
+                  "path": "<Keyboard>/d"
+                }
+              ]
+            },
+            {
+              "id": "b8",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "composite": "2DVector",
+              "name": "Arrows",
+              "params": {
+                "mode": "digitalNormalized"
+              },
+              "parts": [
+                {
+                  "id": "b9",
+                  "part": "up",
+                  "path": "<Keyboard>/upArrow"
+                },
+                {
+                  "id": "b10",
+                  "part": "down",
+                  "path": "<Keyboard>/downArrow"
+                },
+                {
+                  "id": "b11",
+                  "part": "left",
+                  "path": "<Keyboard>/leftArrow"
+                },
+                {
+                  "id": "b12",
+                  "part": "right",
+                  "path": "<Keyboard>/rightArrow"
+                }
+              ]
+            },
+            {
+              "id": "b13",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/leftStick"
+            },
+            {
+              "id": "b14",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/dpad"
+            },
+            {
+              "id": "b15",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/moveStick"
+            }
+          ]
+        },
+        {
+          "id": "a16",
+          "name": "jump",
+          "type": "button",
+          "bindings": [
+            {
+              "id": "b17",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/space"
+            },
+            {
+              "id": "b18",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/buttonSouth"
+            },
+            {
+              "id": "b19",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/jump"
+            }
+          ]
+        },
+        {
+          "id": "a20",
+          "name": "fire",
+          "type": "button",
+          "interactions": [
+            {
+              "type": "tap",
+              "params": {
+                "duration": 0.25
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "id": "b21",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/j"
+            },
+            {
+              "id": "b22",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Mouse>/leftButton"
+            },
+            {
+              "id": "b23",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/buttonWest"
+            },
+            {
+              "id": "b24",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/fire"
+            }
+          ]
+        },
+        {
+          "id": "a25",
+          "name": "charge",
+          "type": "button",
+          "displayName": "Charged Shot",
+          "interactions": [
+            {
+              "type": "hold",
+              "params": {
+                "duration": 0.6
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "id": "b26",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/j"
+            },
+            {
+              "id": "b27",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Mouse>/leftButton"
+            },
+            {
+              "id": "b28",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/buttonWest"
+            },
+            {
+              "id": "b29",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/fire"
+            }
+          ]
+        },
+        {
+          "id": "a30",
+          "name": "dash",
+          "type": "button",
+          "bindings": [
+            {
+              "id": "b31",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/shift"
+            },
+            {
+              "id": "b32",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/k"
+            },
+            {
+              "id": "b33",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/buttonEast"
+            },
+            {
+              "id": "b34",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/rightShoulder"
+            },
+            {
+              "id": "b35",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/dash"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m36",
+      "name": "ui",
+      "enabled": true,
+      "actions": [
+        {
+          "id": "a37",
+          "name": "pause",
+          "type": "button",
+          "bindings": [
+            {
+              "id": "b38",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/escape"
+            },
+            {
+              "id": "b39",
+              "groups": [
+                "KeyboardMouse"
+              ],
+              "path": "<Keyboard>/p"
+            },
+            {
+              "id": "b40",
+              "groups": [
+                "Gamepad"
+              ],
+              "path": "<Gamepad>/start"
+            },
+            {
+              "id": "b41",
+              "groups": [
+                "Touch"
+              ],
+              "path": "<OnScreen>/pause"
+            }
+          ]
+        },
+        {
+          "id": "a42",
+          "name": "join",
+          "type": "button",
+          "rebindable": false,
+          "interactions": [
+            {
+              "type": "hold",
+              "params": {
+                "duration": 0.6
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "id": "b43",
+              "path": "<Keyboard>/enter"
+            },
+            {
+              "id": "b44",
+              "path": "<Gamepad>/buttonSouth"
+            },
+            {
+              "id": "b45",
+              "path": "<OnScreen>/join"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

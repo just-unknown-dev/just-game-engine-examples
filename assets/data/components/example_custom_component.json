@@ -1,0 +1,50 @@
+{
+  "id": "com.example.health_powerup",
+  "name": "Health Powerup",
+  "group": "Gameplay",
+  "description": "Restores player health when collected.",
+  "schemaVersion": 1,
+  "fields": [
+    {
+      "key": "healthRestoreAmount",
+      "label": "Restore Amount",
+      "type": "double",
+      "default": 25.0,
+      "description": "How much health is restored on pickup."
+    },
+    {
+      "key": "isActive",
+      "label": "Active",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "effectType",
+      "label": "Effect Type",
+      "type": "enum",
+      "default": "instant",
+      "enumValues": ["instant", "gradual", "delayed"],
+      "description": "How the health is applied."
+    },
+    {
+      "key": "effectDuration",
+      "label": "Duration (if gradual)",
+      "type": "double",
+      "default": 2.0
+    },
+    {
+      "key": "metadata",
+      "label": "Custom Tags",
+      "type": "map",
+      "default": {},
+      "description": "Optional string→value metadata."
+    },
+    {
+      "key": "requiredTags",
+      "label": "Required Entity Tags",
+      "type": "list",
+      "default": [],
+      "description": "Entity must have one of these tags to collect."
+    }
+  ]
+}

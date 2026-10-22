@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "parent": "assets/materials/sprite_palette_swap.material2d.json",
+  "paletteSwap": {
+    "swaps": [
+      [
+        4278395324,
+        4290511649
+      ],
+      [
+        4280030541,
+        4283241749
+      ],
+      [
+        4289901311,
+        4293980400
+      ],
+      [
+        4288585978,
+        4291348680
+      ]
+    ]
+  }
+}

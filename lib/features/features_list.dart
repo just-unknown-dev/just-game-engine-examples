@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/models/feature_item.dart';
 import 'camera/camera_system_screen.dart';
-import 'core_engine/core_engine_screen.dart';
-import 'package:just_game_engine_examples/features/rendering/rendering_engine_screen.dart';
+import 'core_rendering/core_rendering_screen.dart';
 import 'package:just_game_engine_examples/features/raycasting/raycasting_engine_screen.dart';
 
 import 'package:just_game_engine_examples/features/animation/animation_system_screen.dart';
@@ -20,37 +18,46 @@ import 'storage/storage_signals_screen.dart';
 import 'database/database_signals_screen.dart';
 import 'effects/deterministic_effects_screen.dart';
 import 'narrative/narrative_system_screen.dart';
-import 'editor/editor_overlay_screen.dart';
+import 'lighting_2d/lighting_2d_screen.dart';
+import 'materials_2d/materials_2d_screen.dart';
+import 'timeline/timeline_screen.dart';
+import 'scenes/scenes_prefabs_screen.dart';
+import 'graphics_3d/graphics_3d_screen.dart';
+import 'physics_3d/physics_3d_screen.dart';
 
 // List of features to showcase in the Demo App.
 final List<FeatureItem> appFeatures = [
-  if (kDebugMode)
-    FeatureItem(
-      title: 'Game Editor Overlay',
-      icon: Icons.tune_rounded,
-      description:
-          'just_game_engine_editor runtime overlay with scene tree, inspector, gizmos, grouping, copy/paste and scene save workflow.',
-      builder: (context) => const EditorOverlayScreen(),
-    ),
-
   FeatureItem(
-    title: 'Core Engine',
+    title: 'Core Engine & Rendering',
     icon: Icons.memory,
-    description: 'Showcases the Entity-Component-System (ECS) architecture.',
-    builder: (context) => const CoreEngineScreen(),
-  ),
-  FeatureItem(
-    title: 'Rendering Engine',
-    icon: Icons.brush,
-    description: 'Basic shape drawing and camera transformations.',
-    builder: (context) => const RenderingEngineScreen(),
+    description:
+        'Engine lifecycle, time scale, ECS tags, subsystems and the game loop; '
+        'primitives, layers, particles, hierarchy, custom drawing and culling.',
+    builder: (context) => const CoreRenderingScreen(),
   ),
   FeatureItem(
     title: 'Camera System',
     icon: Icons.videocam,
     description:
-        'Spring follow, lookahead, multi-target, trauma shake, path, rooms, cinematic, screen effects & world bounds.',
+        'Virtual cameras and the camera brain: framing, dead/soft zones, group framing, '
+        'confiners, triggers, dolly paths, blend lists, impulses & noise.',
     builder: (context) => const CameraSystemScreen(),
+  ),
+  FeatureItem(
+    title: '2D Lighting & Shadows',
+    icon: Icons.lightbulb_outline,
+    description:
+        'Lighting2D ambient light, Light2D point & spot lights, ShadowCaster2D soft shadows '
+        'and emissive materials.',
+    builder: (context) => const Lighting2DScreen(),
+  ),
+  FeatureItem(
+    title: '2D Materials',
+    icon: Icons.texture,
+    description:
+        'Material2D effects (wave, scroll, palette, outline, glow, dissolve, flash...) '
+        'and full-screen ScreenMaterials (pixelate, CRT, scanlines, vignette).',
+    builder: (context) => const Materials2DScreen(),
   ),
   FeatureItem(
     title: 'Sprite System',
@@ -61,8 +68,18 @@ final List<FeatureItem> appFeatures = [
   FeatureItem(
     title: 'Animation System',
     icon: Icons.animation,
-    description: 'Sprite sheet frame-by-frame animations.',
+    description:
+        'SpriteAnimationComponent atlases (TexturePacker / Aseprite) and AnimatorComponent '
+        'state machines.',
     builder: (context) => const AnimationSystemScreen(),
+  ),
+  FeatureItem(
+    title: 'Timelines',
+    icon: Icons.view_timeline_outlined,
+    description:
+        'TimelineAsset & TimelinePlayerComponent: property curves, events, activation, '
+        'camera shots, nested timelines and playback control.',
+    builder: (context) => const TimelineScreen(),
   ),
   FeatureItem(
     title: 'Particle System',
@@ -73,7 +90,8 @@ final List<FeatureItem> appFeatures = [
   FeatureItem(
     title: 'Physics Engine',
     icon: Icons.sports_basketball,
-    description: 'Rigid body dynamics and collision detection.',
+    description:
+        'RigidBody2D & Collider2D, joints, collision layers, forces and CharacterBody2D.',
     builder: (context) => const PhysicsEngineScreen(),
   ),
   FeatureItem(
@@ -85,13 +103,16 @@ final List<FeatureItem> appFeatures = [
   FeatureItem(
     title: 'Input System',
     icon: Icons.gamepad,
-    description: 'Keyboard, mouse, touch, and controller inputs.',
+    description:
+        'just_inputs actions & bindings across keyboard, mouse, gamepads and touch; '
+        'on-screen controls and rebinding.',
     builder: (context) => const InputSystemScreen(),
   ),
   FeatureItem(
     title: 'Audio Engine',
     icon: Icons.music_note,
-    description: 'BGM and SFX playback handling.',
+    description:
+        'Music, SFX, channels and 3D positional sound with a listener.',
     builder: (context) => const AudioEngineScreen(),
   ),
   FeatureItem(
@@ -115,8 +136,34 @@ final List<FeatureItem> appFeatures = [
   FeatureItem(
     title: 'Tiled Map',
     icon: Icons.map,
-    description: 'Loading and parsing .tmx map files.',
+    description:
+        'LevelMapComponent: Tiled .tmx maps, merged map collision, runtime tile edits '
+        'and maps built in code.',
     builder: (context) => const TiledMapScreen(),
+  ),
+  FeatureItem(
+    title: 'Scenes & Prefabs',
+    icon: Icons.account_tree_outlined,
+    description:
+        'JSON scenes via SceneLoader, custom component definitions, prefab files, '
+        'save/reload round trips and format migration.',
+    builder: (context) => const ScenesPrefabsScreen(),
+  ),
+  FeatureItem(
+    title: '3D Graphics',
+    icon: Icons.view_in_ar,
+    description:
+        'Flutter GPU 3D: PBR shapes & materials, lights, sky & fog, glTF models with '
+        'skeletal animation, orbit camera rigs.',
+    builder: (context) => const Graphics3DScreen(),
+  ),
+  FeatureItem(
+    title: '3D Physics',
+    icon: Icons.view_in_ar_outlined,
+    description:
+        'Jolt-powered RigidBody3D & Collider3D, CharacterBody3D, joints, raycasts '
+        'and collision events.',
+    builder: (context) => const Physics3DScreen(),
   ),
   FeatureItem(
     title: 'Deterministic Effects',

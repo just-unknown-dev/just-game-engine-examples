@@ -1,0 +1,121 @@
+{
+  "formatVersion": 1,
+  "name": "Crate",
+  "sceneFormat": 10,
+  "entities": [
+    {
+      "id": "crate",
+      "name": "Crate",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 44.0,
+            "height": 44.0,
+            "fillStyle": {
+              "color": 4287458915,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4283315246,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 2.0,
+            "cornerRadius": 4.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 1
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "crate",
+              "pickup"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "band",
+      "name": "Band",
+      "parent": "crate",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 44.0,
+            "height": 8.0,
+            "fillStyle": {
+              "color": 4284301367,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 2
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
+import '../../core/engine/demo_engine.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo mode
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,14 +68,15 @@ enum _Demo {
   String get description => switch (this) {
     move =>
       'MoveEffect translates an entity\'s position from a start to a target '
-          'over a given tick count using any EasingType. Applies an additive '
-          'delta each tick — multiple concurrent MoveEffects stack correctly.',
+          'over a given tick count using any EasingType. Effects count fixed '
+          'steps (EffectSystemECS, not a default system), apply an additive '
+          'delta each tick, and stack. The panel plots EasingType.transform(t).',
     scale =>
       'ScaleEffect animates TransformComponent.scale from its captured start '
           'to the target value. Additive deltas let two ScaleEffects run '
-          'simultaneously without conflict.',
+          'simultaneously without conflict, and a mirrored entity stays mirrored.',
     rotate =>
-      'RotateEffect animates TransformComponent.rotation (radians). Positive '
+      'RotateEffect animates TransformComponent.angle (radians). Positive '
           'values rotate clockwise in Flutter\'s coordinate system. Supports '
           'looping for continuous spin.',
     fade =>
@@ -85,9 +88,10 @@ enum _Demo {
           'Uses absolute interpolation (last writer wins) rather than additive '
           'deltas. Ideal for hit-flash and palette transitions.',
     shake =>
-      'ShakeEffect applies a deterministic sin/cos oscillation to position, '
-          'decaying linearly to zero at durationTicks. Every peer with the same '
-          'parameters produces bit-identical shake — safe for multiplayer.',
+      'ShakeEffect applies a deterministic sin/(cos − 1) oscillation to '
+          'position, decaying linearly to zero at durationTicks, and ends '
+          'exactly where it started — shake as often as you like, nothing '
+          'drifts. Same parameters, same shake on every peer.',
     path =>
       'PathEffect moves an entity along a list of waypoints (linear) or a '
           'cubic Bézier spline (4 control points). relativeToStart offsets all '
@@ -106,32 +110,40 @@ enum _Demo {
           'Infinite repeats set loop: true on the inner EffectPlayer entry.',
     composite =>
       'Full composite: a RepeatEffect wrapping a SequenceEffect that itself '
-          'nests a MoveEffect → ShakeEffect → ParallelEffect(Fade+ColorTint). '
-          'Demonstrates the full compositional power of the system.',
+          'nests a MoveEffect → ShakeEffect → ParallelEffect(Fade+ColorTint) → '
+          'DelayEffect → MoveEffect. Demonstrates the full compositional power '
+          'of the system.',
   };
 
   String get codeSnippet => switch (this) {
     move =>
-      'effectSystem.scheduleEffect(\n'
+      '// Not a default system: add it to the world once.\n'
+          'final effectSystem = EffectSystemECS();\n'
+          'world.addSystem(effectSystem);\n\n'
+          'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: MoveEffect(\n'
-          '    to: Offset(200, 0),\n'
+          '    to: Vector3(160, 0, 0),\n'
           '    easing: EasingType.easeOutCubic,\n'
-          '    durationTicks: 60,\n'
+          '    durationTicks: 60, // fixed steps, not seconds\n'
           '  ),\n'
-          ');',
+          ');\n\n'
+          '// The curve on its own (EffectEasings.resolve is gone):\n'
+          'final y = EasingType.easeOutCubic.transform(0.5);\n'
+          'final EasingFunction f = Easings.easeOutCubic;',
     scale =>
       'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: ScaleEffect(\n'
           '    from: 1.0,\n'
-          '    to: 2.0,\n'
+          '    to: 2.2,\n'
           '    easing: EasingType.easeOutElastic,\n'
           '    durationTicks: 45,\n'
           '  ),\n'
           ');',
     rotate =>
-      'effectSystem.scheduleEffect(\n'
+      '// Drives TransformComponent.angle (was .rotation in 1.x):\n'
+          'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: RotateEffect(\n'
           '    to: 2 * math.pi,\n'
@@ -161,7 +173,8 @@ enum _Demo {
           '  ),\n'
           ');',
     shake =>
-      'effectSystem.scheduleEffect(\n'
+      '// Ends exactly where it started (no drift, even looped):\n'
+          'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: ShakeEffect(\n'
           '    amplitude: 12.0,\n'
@@ -173,40 +186,43 @@ enum _Demo {
       'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: PathEffect(\n'
-          '    waypoints: [\n'
-          '      Offset(0, 0), Offset(50, -80),\n'
-          '      Offset(150, -80), Offset(200, 0),\n'
+          '    waypoints: const [\n'
+          '      Offset(0, 0), Offset(60, -120),\n'
+          '      Offset(160, -120), Offset(220, 0),\n'
           '    ],\n'
-          '    cubicBezier: true,\n'
+          '    cubicBezier: true, // relative to the start\n'
           '    durationTicks: 90,\n'
           '  ),\n'
           ');',
     sequence =>
       'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
-          '  effect: SequenceEffect([\n'
-          '    MoveEffect(to: Offset(160, 0), durationTicks: 30),\n'
-          '    ShakeEffect(amplitude: 8, durationTicks: 20),\n'
+          '  effect: SequenceEffect(children: [\n'
+          '    MoveEffect(to: Vector3(100, 0, 0), durationTicks: 60),\n'
+          '    ShakeEffect(amplitude: 10, durationTicks: 20),\n'
           '    FadeEffect(to: 0.0, durationTicks: 30),\n'
           '  ]),\n'
           ');',
     parallel =>
       'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
-          '  effect: ParallelEffect([\n'
-          '    MoveEffect(to: Offset(140, -80), durationTicks: 60),\n'
+          '  effect: ParallelEffect(children: [\n'
+          '    MoveEffect(to: Vector3(140, -80, 0), durationTicks: 60),\n'
           '    ScaleEffect(to: 1.8, durationTicks: 40),\n'
           '    FadeEffect(to: 0.0, durationTicks: 60),\n'
           '  ]),\n'
           ');',
     repeat =>
-      'effectSystem.scheduleEffect(\n'
+      '// times: 0 repeats forever:\n'
+          'effectSystem.scheduleEffect(\n'
           '  entity: entity,\n'
           '  effect: RepeatEffect(\n'
           '    times: 4,\n'
-          '    child: SequenceEffect([\n'
-          '      MoveEffect(to: Offset(0, -30), durationTicks: 20),\n'
-          '      MoveEffect(to: Offset(0, 0),  durationTicks: 20),\n'
+          '    child: SequenceEffect(children: [\n'
+          '      MoveEffect(from: Vector3.zero(),\n'
+          '        to: Vector3(0, -50, 0), durationTicks: 20),\n'
+          '      MoveEffect(from: Vector3(0, -50, 0),\n'
+          '        to: Vector3.zero(), durationTicks: 20),\n'
           '    ]),\n'
           '  ),\n'
           ');',
@@ -215,15 +231,16 @@ enum _Demo {
           '  entity: entity,\n'
           '  effect: RepeatEffect(\n'
           '    times: 3,\n'
-          '    child: SequenceEffect([\n'
-          '      MoveEffect(to: Offset(120, -60), durationTicks: 25),\n'
+          '    child: SequenceEffect(children: [\n'
+          '      MoveEffect(to: Vector3(100, -60, 0), durationTicks: 25),\n'
           '      ShakeEffect(amplitude: 6, durationTicks: 15),\n'
-          '      ParallelEffect([\n'
-          '        FadeEffect(to: 0.3, durationTicks: 20),\n'
+          '      ParallelEffect(children: [\n'
+          '        FadeEffect(to: 0.35, durationTicks: 20),\n'
           '        ColorTintEffect(\n'
           '          to: Colors.orange, durationTicks: 20),\n'
           '      ]),\n'
-          '      MoveEffect(to: Offset.zero, durationTicks: 20),\n'
+          '      DelayEffect(durationTicks: 10),\n'
+          '      MoveEffect(to: Vector3.zero(), durationTicks: 20),\n'
           '    ]),\n'
           '  ),\n'
           ');',
@@ -248,12 +265,15 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   Vector3 _scale3(double s) => Vector3(s, s, 1.0);
 
   // ── Engine ────────────────────────────────────────────────────────────────
-  late final Engine _engine;
-  late final World _world;
-  late final EffectSystemECS _effectSystem;
-  late final Ticker _ticker;
+  // The app's one shared 2-D engine: already started and driven by the
+  // GameWidget (its fixed steps tick the effects), so this screen never
+  // steps the world itself.
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
 
-  Duration _lastTick = Duration.zero;
+  /// Not a default system: added again after every [DemoEngine.reset].
+  EffectSystemECS _effectSystem = EffectSystemECS();
+  late final Ticker _ticker;
 
   // ── State ─────────────────────────────────────────────────────────────────
   _Demo _demo = _Demo.move;
@@ -293,38 +313,19 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _world = _engine.world;
-
-    _effectSystem = EffectSystemECS();
-    _world.addSystem(_effectSystem);
-
-    _ticker = createTicker(_onTick)..start();
+    // Only refreshes the live stats line; the engine runs itself.
+    _ticker = createTicker((_) {
+      if (mounted) setState(() {});
+    })..start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _buildDemo(_demo));
   }
 
   @override
   void dispose() {
     _ticker.dispose();
-    _world.destroyAllEntities();
-    _world.clearSystems();
+    // Clears the shared world and leaves the engine running.
+    DemoEngine.reset(_engine);
     super.dispose();
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Tick
-  // ─────────────────────────────────────────────────────────────────────────
-
-  void _onTick(Duration elapsed) {
-    if (_lastTick == Duration.zero) {
-      _lastTick = elapsed;
-      return;
-    }
-    final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
-    _lastTick = elapsed;
-
-    _world.update(dt);
-    if (mounted) setState(() {});
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -332,20 +333,20 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _buildDemo(_Demo demo) {
+    if (!mounted) return;
     _demo = demo;
     _statusMessage = '';
     _demoEntities.clear();
 
-    _world.destroyAllEntities();
-    _world.clearSystems();
-
-    // Re-add systems after clearSystems
+    // A clean world with the engine's standard RenderSystem; the camera is
+    // reset too.
+    DemoEngine.reset(_engine, include: {DefaultSystem.rendering});
+    // Effects count the world's fixed steps: a fresh system starts at tick 0.
+    _effectSystem = EffectSystemECS();
     _world.addSystem(_effectSystem);
-    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
-
-    _engine.rendering.camera.reset();
 
     _spawnGrid();
+    _spawnEasingPanel();
 
     switch (demo) {
       case _Demo.move:
@@ -417,6 +418,80 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
         ),
       ),
     ]);
+  }
+
+  /// A small chart of the selected easing, drawn from
+  /// `EasingType.transform(t)` — the 2.x replacement for
+  /// `EffectEasings.resolve(type, t)`. A dot runs along it on the engine's
+  /// clock.
+  void _spawnEasingPanel() {
+    const panel = Rect.fromLTWH(190, 70, 150, 100);
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      RenderableComponent(
+        syncTransform: false,
+        renderable: CustomRenderable(
+          layer: 5,
+          getBoundsCallback: () => panel.inflate(30),
+          onRender: (canvas, _) {
+            final easing = _selectedEasing;
+            final accent = _demo.accentColor;
+            canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                panel.inflate(12),
+                const Radius.circular(6),
+              ),
+              Paint()..color = const Color(0xCC0A1520),
+            );
+            final axis = Paint()
+              ..color = const Color(0xFF2A3F54)
+              ..strokeWidth = 1;
+            canvas.drawLine(panel.bottomLeft, panel.bottomRight, axis);
+            canvas.drawLine(panel.bottomLeft, panel.topLeft, axis);
+            canvas.drawLine(
+              panel.topLeft,
+              panel.topRight,
+              axis..color = const Color(0xFF1A2A3A),
+            );
+
+            Offset at(double t) => Offset(
+              panel.left + t * panel.width,
+              panel.bottom - easing.transform(t) * panel.height,
+            );
+            final curve = Path()..moveTo(panel.left, panel.bottom);
+            const steps = 64;
+            for (var i = 1; i <= steps; i++) {
+              final p = at(i / steps);
+              curve.lineTo(p.dx, p.dy);
+            }
+            canvas.drawPath(
+              curve,
+              Paint()
+                ..color = accent
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2,
+            );
+
+            // A dot along the curve, 1.5 s per pass of engine time.
+            final t = (_engine.time.totalTime % 1.5) / 1.5;
+            canvas.drawCircle(at(t), 4, Paint()..color = Colors.white);
+
+            final label = TextPainter(
+              text: TextSpan(
+                text: '${easing.name}.transform(t)',
+                style: const TextStyle(
+                  color: Color(0xFF90A4AE),
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              textDirection: TextDirection.ltr,
+            )..layout();
+            label.paint(canvas, Offset(panel.left, panel.bottom + 4));
+          },
+        ),
+      ),
+    ], name: 'easing-panel');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -649,7 +724,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
       if (t != null) {
         t.position = _v3(Offset.zero);
         t.scale = _scale3(1.0);
-        t.rotation = 0.0;
+        t.angle = 0.0;
       }
       final r = e.getComponent<RenderableComponent>();
       if (r != null) {
@@ -720,7 +795,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
     e.getComponent<EffectComponent>()?.player.cancelAll();
-    e.getComponent<TransformComponent>()?.rotation = 0.0;
+    e.getComponent<TransformComponent>()?.angle = 0.0;
     _effectSystem.scheduleEffect(
       entity: e,
       effect: RotateEffect(
@@ -738,7 +813,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     if (_demoEntities.isEmpty) return;
     final e = _demoEntities.first;
     e.getComponent<EffectComponent>()?.player.cancelAll();
-    e.getComponent<TransformComponent>()?.rotation = 0.0;
+    e.getComponent<TransformComponent>()?.angle = 0.0;
     _effectSystem.scheduleEffect(
       entity: e,
       effect: RotateEffect(
@@ -1036,6 +1111,8 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
                 ),
               ],
             ),
+            // A spacer: ticks pass, nothing changes.
+            DelayEffect(durationTicks: 10),
             MoveEffect(
               from: _v3(const Offset(100, -60)),
               to: _v3(Offset.zero),
@@ -1066,7 +1143,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
     return 'tick ${_effectSystem.currentTick}'
         '  pos (${pos.x.toStringAsFixed(0)}, ${pos.y.toStringAsFixed(0)})'
         '  scale ${(((t?.scale.x ?? 1) + (t?.scale.y ?? 1)) / 2).toStringAsFixed(2)}'
-        '  rot ${((t?.rotation ?? 0) * 180 / math.pi).toStringAsFixed(1)}°'
+        '  rot ${((t?.angle ?? 0) * 180 / math.pi).toStringAsFixed(1)}°'
         '  α ${(r?.renderable.opacity ?? 1).toStringAsFixed(2)}'
         '  active ${ec?.player.activeCount ?? 0}';
   }
@@ -1172,7 +1249,7 @@ class _DeterministicEffectsScreenState extends State<DeterministicEffectsScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final selected = d == _demo;

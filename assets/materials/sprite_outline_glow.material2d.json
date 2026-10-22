@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "outline": {
+    "colour": 4294967295,
+    "width": 1.5
+  },
+  "glow": {
+    "colour": 4283417591,
+    "radius": 8.0,
+    "strength": 1.5
+  }
+}

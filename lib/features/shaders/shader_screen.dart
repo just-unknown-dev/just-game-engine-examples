@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
+import '../../core/engine/demo_engine.dart';
 import '../../core/widgets/camera_zoom_controls.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +51,20 @@ enum _Demo {
   };
 
   String codeSnippet({
+    required double amplitude,
+    required double frequency,
+    required Color flashColor,
+    required double strength,
+    required double speed,
+  }) =>
+      '${_snippet(amplitude: amplitude, frequency: frequency, flashColor: flashColor, strength: strength, speed: speed)}\n\n'
+      '// 2.x: a GLSL ShaderComponent(program:, setUniforms:) on the entity\n'
+      '// draws through ImageFilter.shader where the renderer supports it\n'
+      '// (Impeller). On the web and Skia the RenderSystem draws the entity\n'
+      '// plain and logs one line instead of throwing every frame —\n'
+      '// ShaderFilterSupport.isSupported tells you which applies.';
+
+  String _snippet({
     required double amplitude,
     required double frequency,
     required Color flashColor,
@@ -140,10 +155,10 @@ class _BobComponent extends Component {
 }
 
 class _FlashComponent extends Component {
-  double intensity;
+  double intensity = 0.0;
   final double decayRate;
 
-  _FlashComponent({this.intensity = 0.0, this.decayRate = 1.6});
+  _FlashComponent({this.decayRate = 1.6});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -218,8 +233,11 @@ class ShaderScreen extends StatefulWidget {
 class _ShaderScreenState extends State<ShaderScreen>
     with SingleTickerProviderStateMixin {
   // ── Engine ───────────────────────────────────────────────────────────────
-  late final Engine _engine;
-  late final World _world;
+  // The app's shared 2-D engine: already started, and driven by the
+  // GameWidget below (fixed-step world updates, rendering). The ticker only
+  // animates the canvas effects and refreshes the HUD.
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
   late final Ticker _ticker;
 
   Duration _lastTick = Duration.zero;
@@ -232,7 +250,6 @@ class _ShaderScreenState extends State<ShaderScreen>
 
   // ── Demo state ───────────────────────────────────────────────────────────
   _Demo _activeDemo = _Demo.water;
-  _Demo? _builtDemo;
 
   // ── Water params ─────────────────────────────────────────────────────────
   double _waterAmplitude = 0.015;
@@ -253,8 +270,6 @@ class _ShaderScreenState extends State<ShaderScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _world = _engine.world;
     _ticker = createTicker(_onTick)..start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadShaders());
   }
@@ -262,8 +277,9 @@ class _ShaderScreenState extends State<ShaderScreen>
   @override
   void dispose() {
     _ticker.dispose();
-    _world.clearSystems();
-    _world.destroyAllEntities();
+    // Destroys this demo's entities (a ShaderComponent disposes its shader
+    // as it goes) and removes the systems it added; the engine keeps running.
+    DemoEngine.reset(_engine);
     super.dispose();
   }
 
@@ -277,7 +293,6 @@ class _ShaderScreenState extends State<ShaderScreen>
     final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
     _lastTick = elapsed;
     _elapsed += dt;
-    _world.update(dt);
 
     if (_activeDemo == _Demo.hitFlash && _autoFlash) {
       _autoFlashTimer += dt;
@@ -315,13 +330,9 @@ class _ShaderScreenState extends State<ShaderScreen>
   }
 
   void _rebuildScene() {
-    _world.destroyAllEntities();
-    _world.clearSystems();
-    _engine.rendering.camera
-      ..setPosition(Offset.zero)
-      ..setZoom(1.0)
-      ..smoothing = false;
-    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
+    // A clean world with the engine's own RenderSystem (wired to its camera,
+    // stats and clock); the camera goes back to the origin at zoom 1.
+    DemoEngine.reset(_engine, include: const {DefaultSystem.rendering});
     switch (_activeDemo) {
       case _Demo.water:
         _buildWaterScene();
@@ -330,7 +341,6 @@ class _ShaderScreenState extends State<ShaderScreen>
       case _Demo.vertexWave:
         _buildVertexWaveScene();
     }
-    _builtDemo = _activeDemo;
     _autoFlashTimer = 0;
   }
 
@@ -629,10 +639,11 @@ class _ShaderScreenState extends State<ShaderScreen>
     for (int i = 0; i < 6; i++) {
       final a = i * math.pi / 3 - math.pi / 6;
       final p = Offset(math.cos(a) * 28.0, math.sin(a) * 28.0 + 10);
-      if (i == 0)
+      if (i == 0) {
         bodyPath.moveTo(p.dx, p.dy);
-      else
+      } else {
         bodyPath.lineTo(p.dx, p.dy);
+      }
     }
     bodyPath.close();
     canvas.drawPath(bodyPath, Paint()..color = dark);
@@ -948,7 +959,8 @@ class _ShaderScreenState extends State<ShaderScreen>
             'Entities: ${_world.entities.length}   |   '
             'Systems: ${_world.systems.length}   |   '
             'Shader: ${_programs[active] != null ? "loaded ✓" : "unavailable"}   |   '
-            'Zoom: ${_engine.rendering.camera.zoom.toStringAsFixed(2)}x',
+            'Shader filters: ${ShaderFilterSupport.isSupported ? "supported" : "skipped (web/Skia)"}   |   '
+            'Zoom: ${_engine.cameraSystem.mainCamera.zoom.toStringAsFixed(2)}x',
             style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
         ],
@@ -960,8 +972,8 @@ class _ShaderScreenState extends State<ShaderScreen>
 
   Widget _buildCanvas() {
     return CameraZoomControls(
-      camera: _engine.rendering.camera,
-      child: GameWidget(engine: _engine, showFPS: true, showDebug: true),
+      camera: _engine.cameraSystem.mainCamera,
+      child: GameWidget(engine: _engine, showFPS: true),
     );
   }
 
@@ -981,7 +993,7 @@ class _ShaderScreenState extends State<ShaderScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (ctx, i) {
                 final demo = _Demo.values[i];
                 final active = demo == _activeDemo;
@@ -1087,7 +1099,7 @@ class _ShaderScreenState extends State<ShaderScreen>
           ),
           Switch(
             value: _autoFlash,
-            activeColor: _Demo.hitFlash.accentColor,
+            activeThumbColor: _Demo.hitFlash.accentColor,
             onChanged: (v) => setState(() {
               _autoFlash = v;
               _autoFlashTimer = 0;
@@ -1272,7 +1284,7 @@ class _ShaderScreenState extends State<ShaderScreen>
                 ),
                 const Spacer(),
                 const Text(
-                  'ShaderComponent  ·  per-entity via canvas.saveLayer',
+                  'CustomRenderable  ·  canvas.saveLayer, every renderer',
                   style: TextStyle(color: Colors.white24, fontSize: 9),
                 ),
               ],

@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "kind": "screen",
+  "vignette": {
+    "amount": 0.75,
+    "softness": 0.45,
+    "colour": 4278190080
+  }
+}

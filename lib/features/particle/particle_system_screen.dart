@@ -1,8 +1,11 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_game_engine/widgets.dart';
+
+import '../../core/engine/demo_engine.dart';
 
 // -----------------------------------------------------------------------------
 // Demo enum
@@ -54,26 +57,31 @@ enum _Demo {
   String get description => switch (this) {
     presets =>
       'Five classic presets running simultaneously (fire, smoke, sparkle, rain, '
-          'snow). Tap the canvas anywhere to spawn a random explosion.',
+          'snow). Each emitter lives on an entity (ParticleEmitterComponent); '
+          'ParticleSystemECS updates it and RenderSystem draws it. Tap the '
+          'canvas to spawn an explosion that removes itself when done.',
     advanced =>
       'Advanced presets with complex force combinations: Portal (vortex + '
           'attractor), Magic, Electric sparks (LineRenderer streak), Heal aura, '
           'Lava embers.',
     impact =>
       'One-shot burst effects — confetti, blood splatter, dust kick, water splash. '
-          'Tap anywhere on the canvas to trigger the selected impact preset.',
+          'Tap anywhere on the canvas to trigger the selected impact preset; '
+          'removeEntityWhenComplete cleans each one up.',
     forces =>
       'Force sandbox. Eight force types (Gravity, Wind, Attractor, Repeller, '
           'Vortex, Noise, Drag, Boundary) — toggle them on/off to observe '
-          'real-time effects on the same particle stream.',
+          'real-time effects on the same particle stream. Wind and noise keep '
+          'their clocks in ParticleForce.advance(dt), once per frame.',
     renderers =>
-      'Seven renderer types side-by-side: Circle, Square (rotatable), Triangle, '
-          'Star, Line (motion streak), CustomPath (diamond), Text (emoji). '
-          'SpriteParticleRenderer and AnimatedSpriteParticleRenderer require images.',
+      'Eight renderers side-by-side: Circle, Circle (batched: one atlas draw), '
+          'Square (rotatable), Triangle, Star, Line (motion streak), '
+          'CustomPath (diamond), Text (glyph). Sprite renderers take an image.',
     subEmitters =>
       'Sub-emitter chaining. Firework spawns sparkle children when particles die '
           '(SubEmitterTrigger.onDeath). Comet spawns a smoke trail at 40% '
-          'lifetime (SubEmitterTrigger.onLifetimeFraction).',
+          'lifetime (SubEmitterTrigger.onLifetimeFraction). isComplete waits '
+          'for live sub-emitters, so the entity goes only after the sparks.',
     customEffects =>
       'ParticleEffect API — implement onSpawn / onUpdate / onDeath for fully '
           'custom per-particle logic. Left: SpiralEffect stores orbit angle in '
@@ -81,60 +89,79 @@ enum _Demo {
           'colors on spawn.',
     interactive =>
       'Paint particles anywhere. Tap for a one-shot burst, drag to stream '
-          'continuously. Switch between presets and combine effects.',
+          'continuously (the emitter follows its entity\'s transform). Switch '
+          'between presets and combine effects.',
   };
 
   String get codeSnippet => switch (this) {
     presets =>
-      '// Fire-and-forget preset:\n'
-          'final fire = ParticleEffects.fire(position: Offset(0, 100));\n'
-          'engine.rendering.addManagedEmitter(fire);\n\n'
-          '// One-shot explosion (tap callback):\n'
-          'final blast = ParticleEffects.explosion(\n'
-          '  position: worldPos,\n'
-          '  color: Colors.orange,\n'
-          '  particleCount: 80,\n'
-          ');\n'
-          'engine.rendering.addManagedEmitter(blast);',
+      '// Not a default system: add it next to RenderSystem.\n'
+          'world.addSystem(ParticleSystemECS());\n\n'
+          '// A looping preset on an entity:\n'
+          'final at = Vector3(-280, 60, 0);\n'
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(position: at),\n'
+          '  ParticleEmitterComponent(\n'
+          '    emitter: ParticleEffects.fire(position: at),\n'
+          '  ),\n'
+          ']);\n\n'
+          '// One-shot explosion, destroyed when its particles die:\n'
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(position: tap),\n'
+          '  ParticleEmitterComponent(\n'
+          '    emitter: ParticleEffects.explosion(\n'
+          '      position: tap, color: Colors.orange, particleCount: 80,\n'
+          '    ),\n'
+          '    removeEntityWhenComplete: true,\n'
+          '  ),\n'
+          ']);',
     advanced =>
       '// Portal vortex — vortex + attractor + drag:\n'
-          'final portal = ParticleEffects.portal(position: Offset.zero);\n\n'
+          'final portal = ParticleEffects.portal(position: Vector3.zero());\n\n'
           '// Electric sparks with LineParticleRenderer:\n'
           'final sparks = ParticleEffects.electricSparks(\n'
-          '  position: Offset(200, 0),\n'
+          '  position: Vector3(200, 0, 0),\n'
           ');\n\n'
           '// Heal aura — gravity(up) + attractor + noise:\n'
           'final aura = ParticleEffects.healAura(\n'
-          '  position: Offset(-200, 0),\n'
+          '  position: Vector3(-200, 0, 0),\n'
           ');\n\n'
           'for (final e in [portal, sparks, aura]) {\n'
-          '  engine.rendering.addManagedEmitter(e);\n'
+          '  world.createEntityWithComponents([\n'
+          '    TransformComponent(position: e.position),\n'
+          '    ParticleEmitterComponent(emitter: e),\n'
+          '  ]);\n'
           '}',
     impact =>
-      '// Colorful confetti with SquareParticleRenderer + _ConfettiEffect:\n'
+      '// Colorful confetti with SquareParticleRenderer:\n'
           'final confetti = ParticleEffects.confetti(\n'
-          '  position: tapPos, count: 80,\n'
-          ');\n'
-          'engine.rendering.addManagedEmitter(confetti);\n\n'
+          '  position: tap, count: 80,\n'
+          ');\n\n'
           '// Water splash with BoundaryForce.bounce:\n'
           'final splash = ParticleEffects.waterSplash(\n'
-          '  position: tapPos,\n'
-          '  floorY: tapPos.dy + 80,\n'
-          ');\n'
-          'engine.rendering.addManagedEmitter(splash);',
+          '  position: tap,\n'
+          '  floorY: tap.y + 80,\n'
+          ');\n\n'
+          'for (final e in [confetti, splash]) {\n'
+          '  world.createEntityWithComponents([\n'
+          '    TransformComponent(position: tap),\n'
+          '    ParticleEmitterComponent(\n'
+          '      emitter: e, removeEntityWhenComplete: true),\n'
+          '  ]);\n'
+          '}',
     forces =>
       '// Assemble forces at construction:\n'
           'final emitter = ParticleEmitter(\n'
           '  maxParticles: 300, emissionRate: 120,\n'
           '  forces: [\n'
-          '    GravityForce(const Offset(0, 140)),\n'
+          '    const GravityForce(Offset(0, 140)),\n'
           '    WindForce(strength: 80, turbulence: 40),\n'
           '    AttractorForce(center: Offset.zero,\n'
           '      strength: 200, radius: 200),\n'
           '    VortexForce(center: Offset.zero,\n'
           '      strength: 140, radius: 200),\n'
-          '    BoundaryForce(\n'
-          '      bounds: Rect.fromLTWH(-220,-180, 440, 360),\n'
+          '    const BoundaryForce(\n'
+          '      bounds: Rect.fromLTWH(-220, -180, 440, 360),\n'
           '      behavior: ParticleBoundaryBehavior.bounce,\n'
           '    ),\n'
           '  ],\n'
@@ -145,37 +172,40 @@ enum _Demo {
     renderers =>
       '// Built-in geometric renderers:\n'
           'renderer: CircleParticleRenderer()\n'
+          'renderer: CircleParticleRenderer(batched: true) // one draw\n'
           'renderer: SquareParticleRenderer()   // rotatable\n'
           'renderer: TriangleParticleRenderer() // rotatable\n'
           'renderer: StarParticleRenderer()     // 5-pointed\n\n'
           '// Special renderers:\n'
           'renderer: LineParticleRenderer(strokeWidth: 2.0)\n'
           'renderer: CustomPathParticleRenderer(path: myPath)\n'
-          'renderer: TextParticleRenderer(glyph: "snowflake")\n\n'
-          '// Image-based (require ui.Image):\n'
-          'renderer: SpriteParticleRenderer(image: atlas)\n'
+          'renderer: TextParticleRenderer(glyph: "\\u2744")\n\n'
+          '// Image-based (require a ui.Image):\n'
+          'renderer: SpriteParticleRenderer(image: image)\n'
           'renderer: AnimatedSpriteParticleRenderer(\n'
-          '  sheet: atlas, frames: [...],\n'
+          '  sheet: image, frames: [...],\n'
           ')',
     subEmitters =>
       '// Spawn sparkle children when particles die:\n'
-          'ParticleEmitter(\n'
-          '  ...\n'
+          'final firework = ParticleEmitter(\n'
+          '  maxParticles: 30, emissionRate: 0,\n'
           '  subEmitters: [\n'
           '    SubEmitterConfig(\n'
           '      trigger: SubEmitterTrigger.onDeath,\n'
           '      maxInstances: 30,\n'
-          '      factory: (pos) =>\n'
-          '        ParticleEffects.sparkle(position: pos),\n'
+          '      factory: (pos) => ParticleEffects.sparkle(\n'
+          '        position: Vector3.fromOffset(pos)),\n'
           '    ),\n'
           '  ],\n'
-          ');\n\n'
+          ')\n'
+          '  ..burst(25)\n'
+          '  ..isEmitting = false; // complete once sparks are gone\n\n'
           '// Spawn smoke trail at 40% lifetime:\n'
           'SubEmitterConfig(\n'
           '  trigger: SubEmitterTrigger.onLifetimeFraction,\n'
           '  lifetimeFraction: 0.4,\n'
-          '  factory: (pos) =>\n'
-          '    ParticleEffects.smoke(position: pos),\n'
+          '  factory: (pos) => ParticleEffects.smoke(\n'
+          '    position: Vector3.fromOffset(pos)),\n'
           ')',
     customEffects =>
       'class SpiralEffect extends ParticleEffect {\n'
@@ -205,21 +235,22 @@ enum _Demo {
           '}',
     interactive =>
       '// Tap -> burst:\n'
-          'final worldPos =\n'
-          '  camera.screenToWorld(tapScreenPos);\n'
-          'engine.rendering.addManagedEmitter(\n'
-          '  ParticleEffects.explosion(\n'
-          '    position: worldPos,\n'
-          '    color: randomColor,\n'
-          '    particleCount: 60,\n'
+          'final at = Vector3.fromOffset(\n'
+          '  camera.screenToWorld(tapScreenPos));\n'
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(position: at),\n'
+          '  ParticleEmitterComponent(\n'
+          '    emitter: ParticleEffects.explosion(position: at),\n'
+          '    removeEntityWhenComplete: true,\n'
           '  ),\n'
-          ');\n\n'
-          '// Drag -> stream:\n'
-          'final stream =\n'
-          '  ParticleEffects.fire(position: dragWorldPos);\n'
-          'engine.rendering.addManagedEmitter(stream);\n'
-          '// On move: stream.position = newWorldPos;\n'
-          '// On release: stream.isEmitting = false;',
+          ']);\n\n'
+          '// Drag -> stream: the emitter follows the transform\n'
+          '// (syncPositionFromTransform is on by default).\n'
+          'stream.getComponent<TransformComponent>()!\n'
+          '  .position = Vector3.fromOffset(dragWorldPos);\n'
+          '// On release: let it finish, then it removes itself.\n'
+          'stream.getComponent<ParticleEmitterComponent>()!\n'
+          '  .emitter.isEmitting = false;',
   };
 }
 
@@ -313,23 +344,20 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   Vector3 _v3(Offset o) => Vector3.fromOffset(o);
 
   // -- Engine ----------------------------------------------------------------
-  late final Engine _engine;
-  late final World _world;
+  // The app's one shared 2-D engine: already started and driven by the
+  // GameWidget, so this screen never steps the world itself.
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
   late final Ticker _ticker;
-
-  Duration _lastTick = Duration.zero;
 
   // -- UI state --------------------------------------------------------------
   _Demo _demo = _Demo.presets;
   String _statusMessage = '';
 
-  // -- Managed emitters ------------------------------------------------------
-  final List<ParticleEmitter> _emitters = [];
-
   // -- Forces demo -----------------------------------------------------------
   ParticleEmitter? _forcesEmitter;
 
-  final GravityForce _gravityForce = GravityForce(const Offset(0, 140));
+  final GravityForce _gravityForce = const GravityForce(Offset(0, 140));
   final WindForce _windForce = WindForce(
     direction: const Offset(1, 0),
     strength: 80,
@@ -355,9 +383,9 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     scale: 0.008,
     speed: 1.5,
   );
-  final DragForce _dragForce = DragForce(coefficient: 0.06);
-  final BoundaryForce _boundaryForce = BoundaryForce(
-    bounds: const Rect.fromLTWH(-220, -180, 440, 360),
+  final DragForce _dragForce = const DragForce(coefficient: 0.06);
+  final BoundaryForce _boundaryForce = const BoundaryForce(
+    bounds: Rect.fromLTWH(-220, -180, 440, 360),
     behavior: ParticleBoundaryBehavior.bounce,
     restitution: 0.6,
   );
@@ -372,7 +400,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
 
   // -- Interactive demo ------------------------------------------------------
   int _interactivePreset = 0;
-  ParticleEmitter? _streamEmitter;
+  Entity? _streamEntity;
 
   static const _kInteractiveLabels = [
     'Explosion',
@@ -391,37 +419,19 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _world = _engine.world;
-    _ticker = createTicker(_onTick)..start();
+    // Only refreshes the live particle count; the engine runs itself.
+    _ticker = createTicker((_) {
+      if (mounted) setState(() {});
+    })..start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _buildDemo(_demo));
   }
 
   @override
   void dispose() {
     _ticker.dispose();
-    for (final e in _emitters) {
-      _engine.rendering.removeManagedEmitter(e);
-    }
-    _world.destroyAllEntities();
-    _world.clearSystems();
+    // Clears the shared world and leaves the engine running.
+    DemoEngine.reset(_engine);
     super.dispose();
-  }
-
-  // -------------------------------------------------------------------------
-  // Tick
-  // -------------------------------------------------------------------------
-
-  void _onTick(Duration elapsed) {
-    if (_lastTick == Duration.zero) {
-      _lastTick = elapsed;
-      return;
-    }
-    final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
-    _lastTick = elapsed;
-    _world.update(dt);
-    _engine.rendering.updateManagedEmitters(dt);
-    if (mounted) setState(() {});
   }
 
   // -------------------------------------------------------------------------
@@ -429,25 +439,23 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   // -------------------------------------------------------------------------
 
   void _clearDemo() {
-    for (final e in _emitters) {
-      _engine.rendering.removeManagedEmitter(e);
-    }
-    _emitters.clear();
-    _world.destroyAllEntities();
-    _world.clearSystems();
+    // Every entity (and so every emitter) goes, the camera is reset, and the
+    // standard RenderSystem comes back.
+    DemoEngine.reset(_engine, include: {DefaultSystem.rendering});
+    // Not a default system: updates every ParticleEmitterComponent.
+    _world.addSystem(ParticleSystemECS());
     _forcesEmitter = null;
     _activeForces.clear();
-    _streamEmitter = null;
+    _streamEntity = null;
     _fireworkReady = true;
     _cometReady = true;
     _statusMessage = '';
-    _engine.rendering.camera.reset();
   }
 
   void _buildDemo(_Demo demo) {
+    if (!mounted) return;
     _clearDemo();
     _demo = demo;
-    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
     _spawnBackgroundGrid();
     switch (demo) {
       case _Demo.presets:
@@ -511,11 +519,26 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     ], name: 'grid');
   }
 
-  ParticleEmitter _addEmitter(ParticleEmitter emitter) {
-    _emitters.add(emitter);
-    _engine.rendering.addManagedEmitter(emitter);
-    return emitter;
+  /// Puts [emitter] on an entity of its own, at the emitter's position.
+  ///
+  /// [ParticleSystemECS] updates it (moving it with the entity's transform)
+  /// and the [RenderSystem] draws it; a [oneShot] entity is destroyed once
+  /// the emitter has stopped and its last particle (and sub-emitter) died.
+  Entity _addEmitter(ParticleEmitter emitter, {bool oneShot = false}) {
+    return _world.createEntityWithComponents([
+      TransformComponent(position: emitter.position),
+      ParticleEmitterComponent(
+        emitter: emitter,
+        removeEntityWhenComplete: oneShot,
+      ),
+    ], name: oneShot ? 'burst' : 'emitter');
   }
+
+  /// Every emitter on screen, read from the world.
+  List<ParticleEmitter> get _emitters => [
+    for (final e in _world.query(const [ParticleEmitterComponent]))
+      e.getComponent<ParticleEmitterComponent>()!.emitter,
+  ];
 
   void _addLabel(
     Offset pos,
@@ -587,6 +610,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         color: color,
         particleCount: 60 + _rng.nextInt(60),
       ),
+      oneShot: true,
     );
   }
 
@@ -664,7 +688,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         floorY: worldPos.dy + 90,
       ),
     };
-    _addEmitter(emitter);
+    _addEmitter(emitter, oneShot: true);
     setState(
       () => _statusMessage =
           '${_selectedImpact.label} at '
@@ -758,13 +782,14 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   // -------------------------------------------------------------------------
 
   static const _kRendererPositions = <Offset>[
-    Offset(-360, 0),
-    Offset(-240, 0),
-    Offset(-120, 0),
-    Offset(0, 0),
-    Offset(120, 0),
-    Offset(240, 0),
-    Offset(360, 0),
+    Offset(-420, 0),
+    Offset(-300, 0),
+    Offset(-180, 0),
+    Offset(-60, 0),
+    Offset(60, 0),
+    Offset(180, 0),
+    Offset(300, 0),
+    Offset(420, 0),
   ];
 
   void _buildRenderers() {
@@ -777,6 +802,8 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
 
     final renderers = <ParticleRenderer>[
       CircleParticleRenderer(),
+      // Opt-in: every circle of the emitter in one atlas draw.
+      CircleParticleRenderer(batched: true),
       SquareParticleRenderer(),
       TriangleParticleRenderer(),
       StarParticleRenderer(),
@@ -787,6 +814,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
 
     const labels = [
       'Circle',
+      'Circle\n(batched)',
       'Square',
       'Triangle',
       'Star',
@@ -798,7 +826,8 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     final accent = _Demo.renderers.accentColor;
     for (var i = 0; i < renderers.length; i++) {
       final pos = _kRendererPositions[i];
-      final startSize = i == 6 ? 20.0 : 10.0;
+      final isText = renderers[i] is TextParticleRenderer;
+      final startSize = isText ? 20.0 : 10.0;
       _addEmitter(
         ParticleEmitter(
           position: _v3(pos),
@@ -814,20 +843,20 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
           emissionSpread: math.pi / 3,
           speed: 60,
           speedVariation: 20,
-          angularVelocity: i < 5 ? math.pi : 0,
+          angularVelocity: i < 6 ? math.pi : 0,
           angularVelocityVariation: math.pi * 0.5,
           renderer: renderers[i],
           forces: [
-            GravityForce(const Offset(0, 40)),
-            DragForce(coefficient: 0.05),
+            const GravityForce(Offset(0, 40)),
+            const DragForce(coefficient: 0.05),
           ],
         ),
       );
       _addLabel(Offset(pos.dx, pos.dy + 95), labels[i], fontSize: 11);
     }
     _statusMessage =
-        '7 of 9 renderers shown  (SpriteParticleRenderer and '
-        'AnimatedSpriteParticleRenderer require a loaded ui.Image)';
+        '8 renderers shown  (SpriteParticleRenderer and '
+        'AnimatedSpriteParticleRenderer take a loaded ui.Image)';
   }
 
   // -------------------------------------------------------------------------
@@ -866,8 +895,8 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
       speed: 210,
       speedVariation: 70,
       forces: [
-        GravityForce(const Offset(0, 120)),
-        DragForce(coefficient: 0.04),
+        const GravityForce(Offset(0, 120)),
+        const DragForce(coefficient: 0.04),
       ],
       subEmitters: [
         SubEmitterConfig(
@@ -877,8 +906,11 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         ),
       ],
     );
-    emitter.burst(25);
-    _addEmitter(emitter);
+    emitter
+      ..burst(25)
+      // Done emitting: the entity goes once the sparks have died too.
+      ..isEmitting = false;
+    _addEmitter(emitter, oneShot: true);
     setState(() {
       _statusMessage =
           'Firework launched — sparkle sub-emitters triggered on particle death';
@@ -903,7 +935,10 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
       emissionSpread: math.pi / 8,
       speed: 180,
       speedVariation: 30,
-      forces: [GravityForce(const Offset(0, 80)), DragForce(coefficient: 0.04)],
+      forces: [
+        const GravityForce(Offset(0, 80)),
+        const DragForce(coefficient: 0.04),
+      ],
       subEmitters: [
         SubEmitterConfig(
           trigger: SubEmitterTrigger.onLifetimeFraction,
@@ -913,8 +948,10 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         ),
       ],
     );
-    emitter.burst(15);
-    _addEmitter(emitter);
+    emitter
+      ..burst(15)
+      ..isEmitting = false;
+    _addEmitter(emitter, oneShot: true);
     setState(() {
       _statusMessage =
           'Comet launched — smoke sub-emitter spawned at 40% particle lifetime';
@@ -947,7 +984,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         speed: 60,
         speedVariation: 20,
         effect: const _SpiralEffect(_kSpiralCenter),
-        forces: [DragForce(coefficient: 0.01)],
+        forces: [const DragForce(coefficient: 0.01)],
       ),
     );
     _addEmitter(
@@ -970,8 +1007,8 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         renderer: SquareParticleRenderer(),
         effect: _RainbowEffect(),
         forces: [
-          GravityForce(const Offset(0, 80)),
-          DragForce(coefficient: 0.06),
+          const GravityForce(Offset(0, 80)),
+          const DragForce(coefficient: 0.06),
         ],
       ),
     );
@@ -1032,8 +1069,10 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
   // Pointer handling
   // -------------------------------------------------------------------------
 
+  Camera get _camera => _engine.cameraSystem.mainCamera;
+
   void _handlePointerDown(Offset screenPos) {
-    final worldPos = _engine.rendering.camera.screenToWorld(screenPos);
+    final worldPos = _camera.screenToWorld(screenPos);
     switch (_demo) {
       case _Demo.presets:
         _spawnExplosion(worldPos);
@@ -1041,10 +1080,14 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
         _spawnImpact(worldPos);
       case _Demo.interactive:
         final isOneShot = _interactivePreset == 0 || _interactivePreset == 3;
-        final emitter = _buildInteractiveEmitter(worldPos);
-        _addEmitter(emitter);
+        // Every interactive emitter removes itself once it is done: a burst
+        // when its particles die, a stream once released and faded out.
+        final entity = _addEmitter(
+          _buildInteractiveEmitter(worldPos),
+          oneShot: true,
+        );
         if (!isOneShot) {
-          _streamEmitter = emitter;
+          _streamEntity = entity;
         }
       default:
         break;
@@ -1053,15 +1096,19 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
 
   void _handlePointerMove(Offset screenPos) {
     if (_demo != _Demo.interactive) return;
-    final worldPos = _engine.rendering.camera.screenToWorld(screenPos);
-    _streamEmitter?.position = _v3(worldPos);
+    final entity = _streamEntity;
+    if (entity == null || !entity.isAlive) return;
+    // ParticleSystemECS copies the transform onto the emitter each step.
+    entity.getComponent<TransformComponent>()?.position = _v3(
+      _camera.screenToWorld(screenPos),
+    );
   }
 
   void _handlePointerUp(Offset screenPos) {
-    if (_streamEmitter != null) {
-      _streamEmitter!.isEmitting = false;
-      _streamEmitter = null;
-    }
+    final entity = _streamEntity;
+    _streamEntity = null;
+    if (entity == null || !entity.isAlive) return;
+    entity.getComponent<ParticleEmitterComponent>()?.emitter.isEmitting = false;
   }
 
   // -------------------------------------------------------------------------
@@ -1149,7 +1196,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
       onPointerMove: (e) => _handlePointerMove(e.localPosition),
       onPointerUp: (e) => _handlePointerUp(e.localPosition),
       child: GameCameraControls(
-        camera: _engine.rendering.camera,
+        camera: _camera,
         enablePan: false,
         enablePinch: true,
         showZoomLevel: true,
@@ -1171,7 +1218,7 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;
@@ -1331,7 +1378,8 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Text(
-        'Circle  \u00b7  Square  \u00b7  Triangle  \u00b7  Star  \u00b7  Line (streak)'
+        'Circle  \u00b7  Circle (batched)  \u00b7  Square  \u00b7  Triangle  \u00b7  '
+        'Star  \u00b7  Line (streak)'
         '  \u00b7  CustomPath  \u00b7  Text (glyph)',
         style: TextStyle(color: Colors.white38, fontSize: 11),
       ),
@@ -1402,11 +1450,11 @@ class _ParticleSystemScreenState extends State<ParticleSystemScreen>
           ),
         const SizedBox(width: 4),
         _actionButton('Clear', const Color(0xFF78909C), () {
-          for (final e in List.of(_emitters)) {
-            _engine.rendering.removeManagedEmitter(e);
+          // Destroying an emitter's entity takes the emitter with it.
+          for (final e in _world.query(const [ParticleEmitterComponent])) {
+            _world.destroyEntity(e);
           }
-          _emitters.clear();
-          _streamEmitter = null;
+          _streamEntity = null;
           setState(() => _statusMessage = 'Canvas cleared');
         }),
       ],

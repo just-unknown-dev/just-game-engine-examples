@@ -1,0 +1,98 @@
+{
+  "formatVersion": 2,
+  "name": "parade",
+  "duration": 4.0,
+  "fps": 30,
+  "wrap": "loop",
+  "tracks": [
+    {
+      "kind": "nested",
+      "name": "Hopper 1",
+      "binding": {
+        "name": "Hopper 1"
+      },
+      "blocks": [
+        {
+          "start": 0.0,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        },
+        {
+          "start": 2.0,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        }
+      ]
+    },
+    {
+      "kind": "nested",
+      "name": "Hopper 2",
+      "binding": {
+        "name": "Hopper 2"
+      },
+      "blocks": [
+        {
+          "start": 0.4,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        },
+        {
+          "start": 2.4,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        }
+      ]
+    },
+    {
+      "kind": "nested",
+      "name": "Hopper 3",
+      "binding": {
+        "name": "Hopper 3"
+      },
+      "blocks": [
+        {
+          "start": 0.8,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        },
+        {
+          "start": 2.8,
+          "length": 1.0,
+          "value": "assets/timelines/hop.timeline.json"
+        }
+      ]
+    },
+    {
+      "kind": "nested",
+      "name": "Hopper 4",
+      "binding": {
+        "name": "Hopper 4"
+      },
+      "blocks": [
+        {
+          "start": 1.6,
+          "length": 2.0,
+          "value": "assets/timelines/hop.timeline.json",
+          "speed": 2.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "Cues",
+      "events": [
+        {
+          "time": 0.0,
+          "name": "wave",
+          "payload": "first wave"
+        },
+        {
+          "time": 2.0,
+          "name": "wave",
+          "payload": "second wave"
+        }
+      ]
+    }
+  ]
+}

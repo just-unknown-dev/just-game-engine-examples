@@ -1,0 +1,96 @@
+{
+  "version": 2,
+  "atlas": "assets/sprites/characters/character02/character02.atlas.json",
+  "entry": "idle",
+  "parameters": [
+    {
+      "name": "speed",
+      "type": "float",
+      "binding": "speedX"
+    },
+    {
+      "name": "hop",
+      "type": "trigger"
+    }
+  ],
+  "states": [
+    {
+      "name": "idle",
+      "clip": "idle",
+      "x": 80.0,
+      "y": 80.0
+    },
+    {
+      "name": "move",
+      "x": 320.0,
+      "y": 80.0,
+      "blend": {
+        "type": "1d",
+        "parameter": "speed",
+        "motions": [
+          {
+            "clip": "walk",
+            "threshold": 60
+          },
+          {
+            "clip": "run",
+            "threshold": 180
+          }
+        ]
+      }
+    },
+    {
+      "name": "hop",
+      "clip": "idle",
+      "speed": 2.0,
+      "loop": false,
+      "x": 200.0,
+      "y": 240.0
+    }
+  ],
+  "transitions": [
+    {
+      "from": "idle",
+      "to": "move",
+      "duration": 0.12,
+      "conditions": [
+        {
+          "param": "speed",
+          "op": ">",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "from": "move",
+      "to": "idle",
+      "duration": 0.12,
+      "conditions": [
+        {
+          "param": "speed",
+          "op": "<=",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "from": "*",
+      "to": "hop",
+      "priority": 5,
+      "conditions": [
+        {
+          "param": "hop",
+          "op": "==",
+          "value": true
+        }
+      ]
+    },
+    {
+      "from": "hop",
+      "to": "idle",
+      "conditions": [],
+      "hasExitTime": true,
+      "exitTime": 1.0
+    }
+  ]
+}

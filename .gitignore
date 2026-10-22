@@ -72,3 +72,6 @@ app.*.map.json
 
 # Just Game Engine Editor related
 /lib/game/
+
+# Log files
+*.jsonl

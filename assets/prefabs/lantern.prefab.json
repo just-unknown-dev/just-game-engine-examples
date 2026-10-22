@@ -1,0 +1,288 @@
+{
+  "formatVersion": 1,
+  "name": "Lantern",
+  "sceneFormat": 10,
+  "entities": [
+    {
+      "id": "lantern",
+      "name": "Lantern",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 30.0,
+            "height": 8.0,
+            "fillStyle": {
+              "color": 4281812815,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 3.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 1
+          }
+        },
+        {
+          "type": "TagComponent",
+          "fields": {
+            "tags": [
+              "lantern"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "post",
+      "name": "Post",
+      "parent": "lantern",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": -46.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 8.0,
+            "height": 84.0,
+            "fillStyle": {
+              "color": 4283723386,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0,
+            "cornerRadius": 2.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "glow",
+      "name": "Glow",
+      "parent": "lantern",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": -104.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 46.0,
+            "fillStyle": {
+              "color": 4294967295,
+              "blendMode": "modulate",
+              "gradient": {
+                "kind": "radial",
+                "colors": [
+                  2583680335,
+                  872395520,
+                  16757504
+                ],
+                "center": {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                "radius": 0.5
+              }
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "lamp",
+      "name": "Lamp",
+      "parent": "lantern",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": -104.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "RectangleComponent",
+          "fields": {
+            "width": 26.0,
+            "height": 30.0,
+            "fillStyle": {
+              "color": 4280693304,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 4287669422,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 2.0,
+            "cornerRadius": 6.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "flame",
+      "name": "Flame",
+      "parent": "lamp",
+      "components": [
+        {
+          "type": "TransformComponent",
+          "fields": {
+            "position": {
+              "x": 0.0,
+              "y": -104.0,
+              "z": 0.0
+            },
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          }
+        },
+        {
+          "type": "CircleComponent",
+          "fields": {
+            "radius": 7.0,
+            "fillStyle": {
+              "color": 4294959234,
+              "blendMode": "modulate"
+            },
+            "strokeStyle": {
+              "color": 0,
+              "blendMode": "modulate"
+            },
+            "filled": true,
+            "strokeWidth": 0.0
+          }
+        },
+        {
+          "type": "LayerComponent",
+          "fields": {
+            "layerId": "main",
+            "layer": 0,
+            "zOrder": 3
+          }
+        }
+      ]
+    }
+  ]
+}

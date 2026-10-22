@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../features/features_list.dart';
@@ -13,34 +15,65 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Currently selected feature for Desktop view
+  // Feature highlighted in the list (desktop).
   FeatureItem? _selectedFeature;
+
+  // Feature mounted in the showcase area (desktop). Lags [_selectedFeature]
+  // by a frame while the previous demo goes.
+  FeatureItem? _shownFeature;
+
+  // Completes once the demo most recently mounted has been disposed.
+  Future<void>? _demoGone;
+
+  // Whether a demo page is pushed on top (mobile).
+  bool _routeOpen = false;
 
   @override
   void initState() {
     super.initState();
-    // Default to first feature if available
+    // The demo to open on (desktop): `--dart-define=DEMO=<feature title>`,
+    // else the first.
+    const initial = String.fromEnvironment('DEMO');
     if (appFeatures.isNotEmpty) {
-      _selectedFeature = appFeatures.first;
+      _selectedFeature = _shownFeature = appFeatures.firstWhere(
+        (f) => f.title == initial,
+        orElse: () => appFeatures.first,
+      );
     }
   }
 
-  void _onFeatureSelected(FeatureItem feature, bool isMobile) {
+  void _onDemoMounted(Future<void> gone) => _demoGone = gone;
+
+  // The 2-D demos share one engine and clear its world in `dispose()`.
+  // Flutter mounts a new screen before it disposes the one it replaces, so
+  // the next demo is only mounted once the previous one has gone —
+  // otherwise its cleanup would wipe the new demo's world.
+  Future<void> _onFeatureSelected(FeatureItem feature, bool isMobile) async {
     if (isMobile) {
-      // Mobile: Push new screen
-      Navigator.of(context).push(
-        MaterialPageRoute(
+      if (_routeOpen) return;
+      _routeOpen = true;
+      final previous = _demoGone;
+      if (previous != null) await previous;
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
           builder: (context) => Scaffold(
             appBar: AppBar(title: Text(feature.title)),
-            body: feature.builder(context),
+            body: _DemoHost(feature: feature, onMounted: _onDemoMounted),
           ),
         ),
       );
+      _routeOpen = false;
     } else {
-      // Desktop: Update local state
+      if (feature == _selectedFeature && _shownFeature == feature) return;
+      final previous = _demoGone;
       setState(() {
         _selectedFeature = feature;
+        _shownFeature = null;
       });
+      if (previous != null) await previous;
+      if (!mounted || _selectedFeature != feature) return;
+      setState(() => _shownFeature = feature);
     }
   }
 
@@ -70,7 +103,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(fontSize: 12),
           ),
           selected: isSelected,
-          selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+          selectedTileColor: Theme.of(
+            context,
+          ).primaryColor.withValues(alpha: 0.1),
           onTap: () => _onFeatureSelected(feature, isMobile),
           trailing: isMobile ? const Icon(Icons.chevron_right, size: 16) : null,
         );
@@ -82,10 +117,23 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedFeature == null) {
       return const Center(child: Text('Select a feature to showcase.'));
     }
+    final shown = _shownFeature;
+    if (shown == null) {
+      // The previous demo is on its way out.
+      return const ColoredBox(color: Color(0xFF07070F));
+    }
 
     return Column(
       children: [
-        Expanded(child: ClipRect(child: _selectedFeature!.builder(context))),
+        Expanded(
+          child: ClipRect(
+            child: _DemoHost(
+              key: ValueKey(shown.title),
+              feature: shown,
+              onMounted: _onDemoMounted,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -138,4 +186,36 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+/// Builds one demo and reports when it has gone: [onMounted] receives a
+/// future that completes once the demo's screen has been disposed (a
+/// child's `dispose` runs before its parent's).
+class _DemoHost extends StatefulWidget {
+  const _DemoHost({super.key, required this.feature, required this.onMounted});
+
+  final FeatureItem feature;
+  final void Function(Future<void> gone) onMounted;
+
+  @override
+  State<_DemoHost> createState() => _DemoHostState();
+}
+
+class _DemoHostState extends State<_DemoHost> {
+  final Completer<void> _gone = Completer<void>();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onMounted(_gone.future);
+  }
+
+  @override
+  void dispose() {
+    _gone.complete();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.feature.builder(context);
 }

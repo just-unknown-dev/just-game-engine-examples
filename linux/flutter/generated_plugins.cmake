@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   just_audio_engine
+  just_gamepads
   url_launcher_linux
 )
 

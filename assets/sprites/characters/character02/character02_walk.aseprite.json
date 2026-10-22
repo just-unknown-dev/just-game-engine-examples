@@ -1,0 +1,604 @@
+{
+  "frames": [
+    {
+      "filename": "character_02_walk 0.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 140
+    },
+    {
+      "filename": "character_02_walk 1.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 2.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 3.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 4.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 58,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 5.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 58,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 6.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 58,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 7.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 58,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 8.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 116,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 9.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 116,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 10.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 116,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 11.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 116,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 12.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 174,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 140
+    },
+    {
+      "filename": "character_02_walk 13.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 174,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 14.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 174,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 15.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 174,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 16.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 232,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 17.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 232,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 18.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 232,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 19.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 232,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 20.aseprite",
+      "frame": {
+        "x": 0,
+        "y": 290,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 21.aseprite",
+      "frame": {
+        "x": 45,
+        "y": 290,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 22.aseprite",
+      "frame": {
+        "x": 90,
+        "y": 290,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    },
+    {
+      "filename": "character_02_walk 23.aseprite",
+      "frame": {
+        "x": 135,
+        "y": 290,
+        "w": 45,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 45,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 45,
+        "h": 58
+      },
+      "duration": 60
+    }
+  ],
+  "meta": {
+    "app": "https://www.aseprite.org/",
+    "version": "1.3",
+    "image": "character_02_walk.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 180,
+      "h": 348
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "walk",
+        "from": 0,
+        "to": 23,
+        "direction": "forward"
+      },
+      {
+        "name": "walk_back",
+        "from": 0,
+        "to": 23,
+        "direction": "reverse"
+      },
+      {
+        "name": "sway",
+        "from": 0,
+        "to": 5,
+        "direction": "pingpong"
+      },
+      {
+        "name": "step",
+        "from": 0,
+        "to": 11,
+        "direction": "forward"
+      }
+    ],
+    "just": {
+      "clips": {
+        "step": {
+          "loop": false
+        }
+      },
+      "events": {
+        "walk": [
+          {
+            "time": 0.0,
+            "name": "footstep_left"
+          },
+          {
+            "time": 0.8,
+            "name": "footstep_right"
+          }
+        ],
+        "walk_back": [
+          {
+            "time": 0.0,
+            "name": "footstep"
+          }
+        ],
+        "step": [
+          {
+            "time": 0.0,
+            "name": "lift"
+          },
+          {
+            "time": 0.74,
+            "name": "land"
+          }
+        ]
+      }
+    }
+  }
+}

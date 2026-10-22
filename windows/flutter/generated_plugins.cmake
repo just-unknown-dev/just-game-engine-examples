@@ -5,6 +5,8 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   just_audio_engine
+  just_gamepads
+  just_inputs
   url_launcher_windows
 )
 

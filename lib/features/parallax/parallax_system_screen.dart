@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_game_engine/widgets.dart';
+
+import '../../core/engine/demo_engine.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo mode
@@ -37,14 +40,19 @@ enum _Demo {
 
   String get description => switch (this) {
     autoScroll =>
-      'Each layer auto-scrolls via velocityX. Back layers move slowest, '
-          'front layers fastest — matching their scroll factor.',
+      'A ParallaxComponent on an entity; ParallaxRenderSystem (part of '
+          'DefaultSystem.rendering) advances each layer\'s velocityX every '
+          'update. Back layers move slowest, front layers fastest. Drag the '
+          'view: layers also scroll by their scrollFactorX.',
     cameraFollow =>
-      'engine.parallax.update(dt, camera.position) feeds camera movement into '
-          'each layer scroll offset, producing the depth illusion.',
+      'No camera behaviours in 2.x: a virtual camera (VirtualCameraComponent '
+          '+ CameraFramingComponent) follows the runner through the camera '
+          'brain, and ParallaxRenderSystem scrolls every layer against the '
+          'camera of the frame being drawn — nothing to update by hand.',
     depthLayers =>
       'Toggle individual layers on and off to see how the scene is built '
-          'from back to front. Opacity is set to 0 to hide a layer.',
+          'from back to front. Opacity is set to 0 to hide a layer. Several '
+          'ParallaxComponents would be ordered by their LayerComponent.',
     tintEffect =>
       'layer.tint applies a ColorFilter.mode(color, BlendMode.modulate) to '
           'each layer — useful for day/night grading or environmental effects.',
@@ -52,30 +60,41 @@ enum _Demo {
 
   String get codeSnippet => switch (this) {
     autoScroll =>
-      '// Velocity-based auto-scroll (independent of camera):\n'
+      '// engine.parallax is deprecated: put the background on an entity.\n'
           'final bg = ParallaxBackground(layers: [\n'
           '  ParallaxLayer(\n'
           '    image: backTreesImg,\n'
           '    scrollFactorX: 0.10,\n'
+          '    scrollFactorY: 0,\n'
           '    velocityX: speed * 0.10, // slowest\n'
           '  ),\n'
           '  ParallaxLayer(\n'
           '    image: frontTreesImg,\n'
           '    scrollFactorX: 0.80,\n'
+          '    scrollFactorY: 0,\n'
           '    velocityX: speed * 0.80, // fastest\n'
           '  ),\n'
           ']);\n'
-          'engine.parallax.addBackground(bg);',
+          'world.createEntityWithComponents([\n'
+          '  ParallaxComponent(background: bg),\n'
+          '  LayerComponent(layer: LevelLayers.background),\n'
+          ']);\n'
+          '// Drawn by ParallaxRenderSystem — in DefaultSystem.rendering.',
     cameraFollow =>
-      '// Camera-driven parallax — call each frame:\n'
-          'engine.parallax.update(\n'
-          '  deltaTime,\n'
-          '  engine.rendering.camera.position,\n'
-          ');\n\n'
-          '// Each layer offsets by:\n'
-          '// scrollX = camera.x * scrollFactorX + autoScrollX\n'
-          '// → factor 0.0 = fixed sky\n'
-          '// → factor 1.0 = scrolls with camera (foreground)',
+      '// A shot that follows the entity named Runner:\n'
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(),\n'
+          "  VirtualCameraComponent(follow: const EntityTarget.name('Runner')),\n"
+          '  CameraFramingComponent(\n'
+          '    dampingX: 0.6,     // seconds to close the gap\n'
+          '    followY: false,\n'
+          '    lookaheadTime: 0.25,\n'
+          '  ),\n'
+          "], name: 'Follow Camera');\n"
+          '// Needs DefaultSystem.cameras (the camera brain).\n\n'
+          '// Each layer scrolls by:\n'
+          '// camera.x * scrollFactorX + autoScrollX + offset.dx\n'
+          '// → factor 0.0 = fixed sky, 1.0 = moves with the world',
     depthLayers =>
       '// Hide a layer by zeroing its opacity:\n'
           'layer.opacity = 0.0; // invisible\n'
@@ -84,7 +103,8 @@ enum _Demo {
           '// index 0 = Back Trees  (factor 0.10)\n'
           '// index 1 = Mid Trees   (factor 0.35)\n'
           '// index 2 = Lights      (factor 0.55)\n'
-          '// index 3 = Front Trees (factor 0.80)',
+          '// index 3 = Front Trees (factor 0.80)\n\n'
+          '// Several backgrounds: lowest LayerComponent.layer first.',
     tintEffect =>
       '// Apply a tint to a layer:\n'
           'layer.tint = const Color(0xFF2196F3); // blue\n\n'
@@ -92,14 +112,14 @@ enum _Demo {
           'layer.tint = null;\n\n'
           '// Internally uses ColorFilter.mode:\n'
           'paint.colorFilter = ColorFilter.mode(\n'
-          '  layer.tint!.withValues(alpha: opacity),\n'
+          '  layer.tint!.withValues(alpha: 1.0),\n'
           '  BlendMode.modulate,\n'
           ');',
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ECS component + system for camera-follow demo
+// ECS component + system for the camera-follow demo
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BounceComponent extends Component {
@@ -119,8 +139,7 @@ class _BounceSystem extends System {
 
   @override
   void update(double dt) {
-    for (final entity in entities) {
-      if (!entity.isActive) continue;
+    forEach((entity) {
       final b = entity.getComponent<_BounceComponent>()!;
       b.position += b.velocity * dt;
       if (b.position.dx <= b.bounds.left || b.position.dx >= b.bounds.right) {
@@ -137,10 +156,12 @@ class _BounceSystem extends System {
           b.position.dy.clamp(b.bounds.top, b.bounds.bottom),
         );
       }
-      entity.getComponent<TransformComponent>()!.position = Vector3.fromOffset(
-        b.position,
+      entity.getComponent<TransformComponent>()!.position.setValues(
+        b.position.dx,
+        b.position.dy,
+        0,
       );
-    }
+    });
   }
 }
 
@@ -158,11 +179,13 @@ class ParallaxSystemScreen extends StatefulWidget {
 class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
     with SingleTickerProviderStateMixin {
   // ── Engine ───────────────────────────────────────────────────────────────
-  late final Engine _engine;
-  late final World _world;
-  late final Ticker _ticker;
+  /// The app's shared, already running engine — never `Engine()`.
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
 
-  Duration _lastTick = Duration.zero;
+  /// Refreshes the live stats only; the engine runs itself.
+  late final Ticker _ticker;
+  Duration _lastRefresh = Duration.zero;
 
   // ── Loading ───────────────────────────────────────────────────────────────
   bool _loading = true;
@@ -178,7 +201,14 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
   // ── Per-demo controls ─────────────────────────────────────────────────────
   double _scrollSpeed = 40.0;
   final List<bool> _layerVisible = [true, true, true, true];
-  _BounceComponent? _playerMover;
+  VirtualCameraComponent? _followCam;
+  CameraFramingComponent? _framing;
+  int _dampingPreset = 1;
+  static const List<(String, double)> _dampingPresets = [
+    ('Rigid', 0.0),
+    ('Smooth', 0.6),
+    ('Lazy', 1.6),
+  ];
 
   // ── Tint presets ─────────────────────────────────────────────────────────
   int _tintPreset = 0;
@@ -230,8 +260,6 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _world = _engine.world;
     _ticker = createTicker(_onTick)..start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAssets());
   }
@@ -239,39 +267,27 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
   @override
   void dispose() {
     _ticker.dispose();
-    _engine.parallax.clear();
-    _engine.rendering.onRenderBackground = _engine.parallax.render;
-    _world.clearSystems();
-    _world.destroyAllEntities();
-    _engine.rendering.camera
-      ..setPosition(Offset.zero)
-      ..setZoom(1.0)
-      ..smoothing = false;
+    // Destroys the parallax entity (and with it the only reference the
+    // engine had to the layer images), removes the demo's systems and
+    // resets the camera — the shared engine keeps running.
+    DemoEngine.reset(_engine);
+    _parallaxBg = null;
+    // Sprite.loadImageFromAsset hands out clones: they are this screen's.
+    for (final li in _layerImages) {
+      li.image.dispose();
+    }
+    _layerImages.clear();
     super.dispose();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Tick
+  // Tick — live stats only
   // ─────────────────────────────────────────────────────────────────────────
 
   void _onTick(Duration elapsed) {
-    if (_lastTick == Duration.zero) {
-      _lastTick = elapsed;
-      return;
-    }
-    final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
-    _lastTick = elapsed;
-
-    _world.update(dt);
-
-    if (_demo == _Demo.cameraFollow && _playerMover != null) {
-      _engine.rendering.camera.follow(_playerMover!.position, smooth: true);
-      _engine.rendering.camera.update(dt);
-    }
-
-    _engine.parallax.update(dt, _engine.rendering.camera.position);
-
-    if (mounted) setState(() {});
+    if (elapsed - _lastRefresh < const Duration(milliseconds: 100)) return;
+    _lastRefresh = elapsed;
+    if (mounted && !_loading) setState(() {});
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -286,7 +302,15 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
     _source = (credits?['source'] as String?) ?? '';
 
     for (final def in _layerDefs) {
-      final image = await Sprite.loadImageFromAsset('$_root/${def.file}');
+      final image = await Sprite.loadImageFromAsset(
+        '$_root/${def.file}',
+        assets: _engine.assets,
+      );
+      if (!mounted) {
+        // Left while loading: nothing will draw it.
+        image.dispose();
+        continue;
+      }
       _layerImages.add(_LayerImages(image: image, def: def));
     }
 
@@ -303,24 +327,26 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
     if (_loading) return;
     _demo = demo;
     _statusMessage = '';
-    _playerMover = null;
+    _followCam = null;
+    _framing = null;
     _tintPreset = 0;
     _layerVisible.fillRange(0, 4, true);
 
-    _engine.rendering.camera
-      ..setPosition(Offset.zero)
-      ..setZoom(1.0)
-      ..smoothing = false;
+    // A clean world: RenderSystem + ParallaxRenderSystem, and the camera
+    // brain for the follow demo. The camera goes back to the origin.
+    DemoEngine.reset(
+      _engine,
+      include: {
+        DefaultSystem.rendering,
+        if (demo == _Demo.cameraFollow) DefaultSystem.cameras,
+      },
+    );
 
-    _world.clearSystems();
-    _world.destroyAllEntities();
-
-    _engine.rendering.onRenderBackground = _engine.parallax.render;
-    _engine.parallax.clear();
     _parallaxBg = _buildParallaxBg();
-    _engine.parallax.addBackground(_parallaxBg!);
-
-    _world.addSystem(RenderSystem(camera: _engine.rendering.camera));
+    _world.createEntityWithComponents([
+      ParallaxComponent(background: _parallaxBg!),
+      LayerComponent(layerId: 'background', layer: LevelLayers.background),
+    ], name: 'Forest Parallax');
 
     switch (demo) {
       case _Demo.autoScroll:
@@ -359,31 +385,25 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
   }
 
   void _applyScrollSpeed() {
-    if (_parallaxBg == null) return;
-    for (int i = 0; i < _parallaxBg!.layers.length; i++) {
-      _parallaxBg!.layers[i].velocityX =
-          _scrollSpeed * _layerImages[i].def.scrollFactor;
+    final bg = _parallaxBg;
+    if (bg == null) return;
+    for (int i = 0; i < bg.layers.length; i++) {
+      bg.layers[i].velocityX = _scrollSpeed * _layerImages[i].def.scrollFactor;
     }
   }
 
   // ── Camera Follow ────────────────────────────────────────────────────────
 
   void _setupCameraFollow() {
-    _engine.rendering.camera.smoothing = true;
-    _engine.rendering.camera.smoothingFactor = 0.06;
-
     _world.addSystem(_BounceSystem()..priority = 80);
-
-    final mover = _BounceComponent(
-      position: Offset.zero,
-      velocity: const Offset(160, 0),
-      bounds: const Rect.fromLTWH(-600, -60, 1200, 120),
-    );
-    _playerMover = mover;
 
     _world.createEntityWithComponents([
       TransformComponent(),
-      mover,
+      _BounceComponent(
+        position: Offset.zero,
+        velocity: const Offset(170, 0),
+        bounds: const Rect.fromLTWH(-700, -60, 1400, 120),
+      ),
       RenderableComponent(
         renderable: CustomRenderable(
           layer: 10,
@@ -418,9 +438,47 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
           },
         ),
       ),
-    ]);
+    ], name: 'Runner');
 
-    _statusMessage = 'Camera follows the character — parallax depth responds';
+    // The shot: the camera brain blends engine.cameraSystem.mainCamera to
+    // it every update. ParallaxRenderSystem reads that camera when drawing.
+    final cam = _followCam = VirtualCameraComponent(
+      follow: const EntityTarget.name('Runner'),
+    );
+    final framing = _framing = CameraFramingComponent(
+      dampingX: _dampingPresets[_dampingPreset].$2,
+      followY: false,
+      deadZoneWidth: 0.05,
+      lookaheadTime: 0.25,
+    );
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      cam,
+      framing,
+    ], name: 'Follow Camera');
+
+    _statusMessage = 'A virtual camera follows the runner — parallax responds';
+  }
+
+  void _toggleFollow() {
+    final cam = _followCam;
+    if (cam == null) return;
+    // Disabled, the brain leaves the output camera alone: drag to pan.
+    cam.enabled = !cam.enabled;
+    setState(
+      () => _statusMessage = cam.enabled
+          ? 'Following — the brain drives the camera'
+          : 'Follow off — drag to pan the camera yourself',
+    );
+  }
+
+  void _setDamping(int index) {
+    _dampingPreset = index;
+    _framing?.dampingX = _dampingPresets[index].$2;
+    setState(
+      () => _statusMessage =
+          'dampingX = ${_dampingPresets[index].$2} s (${_dampingPresets[index].$1})',
+    );
   }
 
   // ── Depth Layers ─────────────────────────────────────────────────────────
@@ -432,9 +490,8 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
 
   void _setLayerVisible(int index, bool visible) {
     _layerVisible[index] = visible;
-    if (_parallaxBg != null) {
-      _parallaxBg!.layers[index].opacity = visible ? 1.0 : 0.0;
-    }
+    final bg = _parallaxBg;
+    if (bg != null) bg.layers[index].opacity = visible ? 1.0 : 0.0;
     setState(() {});
   }
 
@@ -448,10 +505,11 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
 
   void _applyTintPreset(int index) {
     _tintPreset = index;
-    if (_parallaxBg == null) return;
+    final bg = _parallaxBg;
+    if (bg == null) return;
     final tints = _tintPresets[index].$2;
-    for (int i = 0; i < _parallaxBg!.layers.length; i++) {
-      _parallaxBg!.layers[i].tint = i < tints.length ? tints[i] : null;
+    for (int i = 0; i < bg.layers.length; i++) {
+      bg.layers[i].tint = i < tints.length ? tints[i] : null;
     }
     setState(() {});
   }
@@ -462,13 +520,14 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
 
   String get _statsLine {
     if (_loading) return 'Loading assets…';
-    final cam = _engine.rendering.camera;
+    final cam = _engine.cameraSystem.mainCamera;
     final pos = cam.position;
+    final following = _followCam?.enabled ?? false;
     return 'layers ${_layerDefs.length}'
         '  •  cam (${pos.dx.toStringAsFixed(0)}, ${pos.dy.toStringAsFixed(0)})'
         '  •  zoom ${cam.zoom.toStringAsFixed(2)}'
-        '  •  scroll ${_scrollSpeed.toStringAsFixed(0)} px/s'
-        '  •  artist: $_artist';
+        '${_demo == _Demo.cameraFollow ? '  •  follow ${following ? 'on' : 'off'}' : '  •  scroll ${_scrollSpeed.toStringAsFixed(0)} px/s'}'
+        '  •  art: $_artist';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -520,9 +579,12 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
                 ),
               ),
               const Spacer(),
-              const Text(
-                'ParallaxSystem  ·  ParallaxBackground  ·  ParallaxLayer',
-                style: TextStyle(color: Color(0xFF26C6DA), fontSize: 10),
+              const Flexible(
+                child: Text(
+                  'ParallaxComponent  ·  ParallaxRenderSystem  ·  ParallaxLayer',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Color(0xFF26C6DA), fontSize: 10),
+                ),
               ),
             ],
           ),
@@ -547,6 +609,13 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
+          if (_source.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Parallax forest art: $_source',
+              style: const TextStyle(color: Colors.white24, fontSize: 9),
+            ),
+          ],
         ],
       ),
     );
@@ -556,7 +625,7 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
 
   Widget _buildCanvas() {
     return GameCameraControls(
-      camera: _engine.rendering.camera,
+      camera: _engine.cameraSystem.mainCamera,
       enablePan: true,
       enablePinch: true,
       showZoomLevel: true,
@@ -579,7 +648,7 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;
@@ -663,41 +732,58 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
         _actionButton('Reset', const Color(0xFF26C6DA), () {
           setState(() => _scrollSpeed = 40.0);
           _applyScrollSpeed();
+          _engine.cameraSystem.mainCamera.reset();
         }),
       ],
     );
   }
 
   Widget _buildCameraFollowControls() {
-    return Row(
+    const color = Color(0xFF66BB6A);
+    final following = _followCam?.enabled ?? false;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Text(
-          'Drag to pan  ·  Pinch/scroll to zoom  ·  Camera follows the character',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
+        _actionButton(
+          following ? 'Follow: ON' : 'Follow: OFF',
+          color,
+          _toggleFollow,
+          selected: following,
         ),
-        const Spacer(),
-        _actionButton('Reset Camera', const Color(0xFF66BB6A), () {
-          _engine.rendering.camera
-            ..setPosition(Offset.zero)
-            ..setZoom(1.0);
-        }),
+        const SizedBox(width: 6),
+        const Text(
+          'dampingX:',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+        for (int i = 0; i < _dampingPresets.length; i++)
+          _actionButton(
+            _dampingPresets[i].$1,
+            color,
+            () => _setDamping(i),
+            selected: _dampingPreset == i,
+          ),
+        const SizedBox(width: 6),
+        const Text(
+          'VirtualCameraComponent · CameraFramingComponent',
+          style: TextStyle(color: Colors.white30, fontSize: 11),
+        ),
       ],
     );
   }
 
   Widget _buildDepthLayersControls() {
-    return Row(
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text(
           'Layers:',
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
-        const SizedBox(width: 10),
-        for (int i = 0; i < _layerDefs.length; i++) ...[
-          _layerToggleButton(i),
-          const SizedBox(width: 6),
-        ],
-        const Spacer(),
+        for (int i = 0; i < _layerDefs.length; i++) _layerToggleButton(i),
         _actionButton('Show All', const Color(0xFFFFCA28), () {
           for (int i = 0; i < _layerDefs.length; i++) {
             _setLayerVisible(i, true);
@@ -750,22 +836,22 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
   }
 
   Widget _buildTintEffectControls() {
-    return Row(
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text(
           'Preset:',
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
-        const SizedBox(width: 10),
-        for (int i = 0; i < _tintPresets.length; i++) ...[
+        for (int i = 0; i < _tintPresets.length; i++)
           _actionButton(
             _tintPresets[i].$1,
             const Color(0xFFAB47BC),
             () => _applyTintPreset(i),
             selected: _tintPreset == i,
           ),
-          const SizedBox(width: 6),
-        ],
       ],
     );
   }
@@ -837,7 +923,7 @@ class _ParallaxSystemScreenState extends State<ParallaxSystemScreen>
                 ),
                 const Spacer(),
                 const Text(
-                  'just_game_engine · ParallaxSystem API',
+                  'just_game_engine 2.x · Parallax API',
                   style: TextStyle(color: Colors.white24, fontSize: 9),
                 ),
               ],

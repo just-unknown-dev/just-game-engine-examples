@@ -1,0 +1,343 @@
+{
+  "formatVersion": 2,
+  "name": "shapes_showcase",
+  "duration": 4.0,
+  "fps": 30,
+  "wrap": "loop",
+  "tracks": [
+    {
+      "kind": "property",
+      "name": "Slide",
+      "binding": {
+        "name": "Box"
+      },
+      "component": "TransformComponent",
+      "field": "position",
+      "channel": "x",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": -220.0,
+          "out": [
+            0.6667,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 2.0,
+          "v": 220.0,
+          "in": [
+            -0.6667,
+            0.0
+          ],
+          "out": [
+            0.6667,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 4.0,
+          "v": -220.0,
+          "in": [
+            -0.6667,
+            0.0
+          ],
+          "m": "flat"
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Drop",
+      "binding": {
+        "name": "Box"
+      },
+      "component": "TransformComponent",
+      "field": "position",
+      "channel": "y",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": -150.0,
+          "i": "eased",
+          "e": "easeOutBounce"
+        },
+        {
+          "t": 1.2,
+          "v": -40.0,
+          "i": "eased",
+          "e": "easeInOutCubic"
+        },
+        {
+          "t": 2.0,
+          "v": -150.0,
+          "i": "eased",
+          "e": "easeOutBounce"
+        },
+        {
+          "t": 3.2,
+          "v": -40.0,
+          "i": "eased",
+          "e": "easeInOutCubic"
+        },
+        {
+          "t": 4.0,
+          "v": -150.0
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Tint",
+      "binding": {
+        "name": "Box"
+      },
+      "component": "FillColorComponent",
+      "field": "color",
+      "color": true,
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 4280923894,
+          "i": "linear"
+        },
+        {
+          "t": 1.33,
+          "v": 4294953512,
+          "i": "linear"
+        },
+        {
+          "t": 2.66,
+          "v": 4294276207,
+          "i": "linear"
+        },
+        {
+          "t": 4.0,
+          "v": 4280923894
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Spin",
+      "binding": {
+        "name": "Star"
+      },
+      "component": "TransformComponent",
+      "field": "rotation",
+      "channel": "z",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 0.0,
+          "i": "linear"
+        },
+        {
+          "t": 4.0,
+          "v": 6.283185
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Pulse X",
+      "binding": {
+        "name": "Orb"
+      },
+      "component": "TransformComponent",
+      "field": "scale",
+      "channel": "x",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 1.0,
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 1.0,
+          "v": 1.6,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 2.0,
+          "v": 1.0,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 3.0,
+          "v": 1.6,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 4.0,
+          "v": 1.0,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "m": "flat"
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Pulse Y",
+      "binding": {
+        "name": "Orb"
+      },
+      "component": "TransformComponent",
+      "field": "scale",
+      "channel": "y",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 1.0,
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 1.0,
+          "v": 0.7,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 2.0,
+          "v": 1.0,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 3.0,
+          "v": 0.7,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "out": [
+            0.3333,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 4.0,
+          "v": 1.0,
+          "in": [
+            -0.3333,
+            0.0
+          ],
+          "m": "flat"
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Signal colour",
+      "binding": {
+        "name": "Orb"
+      },
+      "component": "FillColorComponent",
+      "field": "color",
+      "color": true,
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 4284922730,
+          "i": "step"
+        },
+        {
+          "t": 1.0,
+          "v": 4294953512,
+          "i": "step"
+        },
+        {
+          "t": 2.0,
+          "v": 4294276207,
+          "i": "step"
+        },
+        {
+          "t": 3.0,
+          "v": 4289415100,
+          "i": "step"
+        },
+        {
+          "t": 4.0,
+          "v": 4284922730
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "Laps",
+      "events": [
+        {
+          "time": 0.0,
+          "name": "lap"
+        },
+        {
+          "time": 2.0,
+          "name": "turn",
+          "payload": "Box reached the right"
+        }
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "time": 0.0,
+      "name": "start"
+    },
+    {
+      "time": 2.0,
+      "name": "turn"
+    }
+  ]
+}

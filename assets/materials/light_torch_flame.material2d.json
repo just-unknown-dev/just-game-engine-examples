@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "emissive": {
+    "amount": 1.0
+  },
+  "glow": {
+    "colour": 4294941244,
+    "radius": 14.0,
+    "strength": 1.8
+  }
+}

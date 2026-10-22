@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_game_engine/just_game_engine.dart';
+import 'package:just_game_engine/widgets.dart';
 
 // =============================================================================
 // Demo modes
@@ -12,6 +13,7 @@ enum _Demo {
   linear,
   branching,
   variables,
+  expressions,
   commands,
   signals,
   hubSpoke,
@@ -21,6 +23,7 @@ enum _Demo {
     linear => 'Linear',
     branching => 'Branching',
     variables => 'Variables',
+    expressions => 'Expressions',
     commands => 'Commands',
     signals => 'Signals',
     hubSpoke => 'Hub & Spoke',
@@ -31,6 +34,7 @@ enum _Demo {
     linear => Icons.chat_bubble_outline,
     branching => Icons.call_split,
     variables => Icons.data_object,
+    expressions => Icons.functions,
     commands => Icons.terminal,
     signals => Icons.sensors,
     hubSpoke => Icons.hub,
@@ -41,6 +45,7 @@ enum _Demo {
     linear => const Color(0xFF29B6F6),
     branching => const Color(0xFF66BB6A),
     variables => const Color(0xFFAB47BC),
+    expressions => const Color(0xFF7986CB),
     commands => const Color(0xFFFF7043),
     signals => const Color(0xFFFFCA28),
     hubSpoke => const Color(0xFF26A69A),
@@ -56,9 +61,16 @@ enum _Demo {
           'DialogueChoicesWidget renders options; each branch routes to '
           'a different story path.',
     variables =>
-      'Yarn <<set>> writes to DialogueVariableStore. '
-          'Inline {\$varName} substitution renders live values in text. '
-          'Conditional #if guards lock choices at runtime.',
+      '<<declare>> gives a variable its first value only, so the purse '
+          'survives a restart (Reset store clears it); <<set \$x to v>> '
+          'writes DialogueVariableStore. {\$varName} fills in live values '
+          'and an option\'s <<if …>> condition locks it at runtime.',
+    expressions =>
+      'NEW IN 2.0 — Yarn expressions: and / or / not / xor with Yarn '
+          'precedence, {\$var} in speaker names and command arguments, '
+          'quoted command arguments kept whole, and escapes (\\# \\{ \\} '
+          '\\[ \\]) that keep text literal. Give yourself a pass or gold '
+          'and replay: the options re-evaluate.',
     commands =>
       'Custom <<command args>> statements invoke registered Dart async '
           'handlers via DialogueCommandRegistry. '
@@ -120,11 +132,12 @@ enum _Demo {
           'runner.selectChoice(index);',
     variables =>
       '// Yarn:\n'
-          '// <<set \$gold = 10>>\n'
+          '// <<declare \$gold = 10>>       // first value only\n'
+          '// <<declare \$hasSword = false>>\n'
           '// Merchant: You have {\$gold} gold.\n'
-          '// -> Buy sword  #if \$gold >= 8\n'
-          '//     <<set \$gold = \$gold - 8>>\n'
-          '//     <<set \$hasSword = true>>\n\n'
+          '// -> Buy sword <<if \$gold >= 8 and not \$hasSword>>\n'
+          '//     <<set \$gold to \$gold - 8>>\n'
+          '//     <<set \$hasSword>>         // a lone flag = true\n\n'
           'final vars = DialogueVariableStore();\n\n'
           '// Read values at any point:\n'
           'vars.get<int>(\'gold\')          // → 2\n'
@@ -132,25 +145,50 @@ enum _Demo {
           'vars.getOrDefault(\'coins\', 0)  // → 0\n\n'
           '// Persist and restore:\n'
           'final snap = vars.toMap();\n'
-          'vars.loadFromMap(snap);',
+          'vars.loadFromMap(snap);\n'
+          'vars.clear(); // <<declare>> applies again',
+    expressions =>
+      '// Yarn 2.x expressions (precedence: not, * / %, + -,\n'
+          '// < <= > >=, == !=, and, or, xor):\n'
+          '// <<declare \$guard = "Bram">>\n'
+          '// {\$guard}: Toll is 10 gold \\#per head\\#.\n'
+          '// -> Pay. <<if \$gold >= 10 and not \$hasPass>>\n'
+          '// -> Show pass. <<if \$hasPass>>\n'
+          '// -> Bluff. <<if \$reputation gte 3 or \$gold lt 5>>\n'
+          '// <<if \$hasPass xor \$paid>>\n'
+          '// <<toast "Bridge crossed" {\$gold}>>\n\n'
+          'final cmds = DialogueCommandRegistry()\n'
+          '  ..register(\'toast\', (ctx) async {\n'
+          '    ctx.args; // [\'Bridge crossed\', \'2\']\n'
+          '  });\n\n'
+          '// Same evaluator, from Dart:\n'
+          'final eval = ExpressionEvaluator(\n'
+          '  variables: vars,\n'
+          '  conditions: DialogueConditionRegistry(),\n'
+          ');\n'
+          'eval.evaluateBool(r\'\$gold >= 10 and not \$hasPass\');\n'
+          'eval.evaluate(r\'\$gold % 3 + 1\');',
     commands =>
       '// Yarn:\n'
           '// <<flash red>>\n'
-          '// <<shake>>\n'
+          '// <<shake 0.8>>\n'
           '// <<flash white>>\n\n'
-          'final cmds = DialogueCommandRegistry();\n\n'
+          'final cmds = DialogueCommandRegistry();\n'
+          'final fade = ScreenFadeEffect();\n'
+          'engine.cameraSystem.mainCamera.effectManager.addEffect(fade);\n\n'
           'cmds.register(\'flash\', (ctx) async {\n'
-          '  final color = colorFromName(ctx.arg(0));\n'
-          '  await triggerFlash(color);\n'
+          '  fade.flash(colorFromName(ctx.arg(0)));\n'
           '});\n\n'
           'cmds.register(\'shake\', (ctx) async {\n'
           '  final power =\n'
           '      double.tryParse(ctx.arg(0) ?? \'0.5\') ?? 0.5;\n'
-          '  await camera.shake(intensity: power * 20);\n'
+          '  engine.cameraSystem.brain.emitImpulse(\n'
+          '    CameraImpulse(position: Offset.zero, amplitude: power * 20),\n'
+          '  ); // shots with a CameraImpulseListenerComponent shake\n'
           '});\n\n'
           '// ctx members:\n'
           '// ctx.name     → \'flash\'\n'
-          '// ctx.args     → [\'red\']\n'
+          '// ctx.args     → [\'red\']  ("quoted words" stay whole)\n'
           '// ctx.rawArgs  → \'red\'',
     signals =>
       '// All reactive state on NarrativeSignals:\n'
@@ -162,7 +200,7 @@ enum _Demo {
           'sig.activeNodeTitle   // Signal<String?>\n'
           'sig.hasChoices        // Computed<bool>\n'
           'sig.hasLine           // Computed<bool>\n\n'
-          '// Use SignalBuilder in Flutter:\n'
+          '// SignalBuilder (package:just_signals) in Flutter:\n'
           'SignalBuilder<bool>(\n'
           '  signal: sig.isDialogueActive,\n'
           '  builder: (ctx, active, _) =>\n'
@@ -184,10 +222,8 @@ enum _Demo {
           '// <<jump TownSquare>>\n'
           '// ===\n\n'
           '// Merge multiple .yarn files:\n'
-          'final graph = DialogueGraph.merge([\n'
-          '  YarnParser.parse(file1, id: \'world\'),\n'
-          '  YarnParser.parse(file2, id: \'world\'),\n'
-          ']);\n\n'
+          'final graph = YarnParser.parse(file1, id: \'world\')\n'
+          '    .merge(YarnParser.parse(file2, id: \'world\'));\n\n'
           'unawaited(runner.start(\'TownSquare\'));',
     assetFile =>
       '// Load a .yarn file from Flutter assets:\n'
@@ -200,7 +236,7 @@ enum _Demo {
           '    })\n'
           '    ..register(\'fade_out\', (ctx) async {\n'
           '      final dur = double.tryParse(ctx.arg(0) ?? \'1\') ?? 1.0;\n'
-          '      await camera.fadeOut(dur);\n'
+          '      fade.fadeIn(dur); // ScreenFadeEffect on the camera\n'
           '    })\n'
           '    ..register(\'flash_quest_accept\', (ctx) async {\n'
           '      triggerQuestAcceptEffect();\n'
@@ -254,15 +290,15 @@ Guard: Safe travels.
 const _kVariablesYarn = r'''
 title: Start
 ---
-<<set $gold = 10>>
-<<set $hasSword = false>>
+<<declare $gold = 10>>
+<<declare $hasSword = false>>
 Merchant: Greetings! I have a fine blade — only 8 gold.
 Merchant: You appear to carry {$gold} gold. Interested?
--> Buy the sword. #if $gold >= 8
-    <<set $gold = $gold - 8>>
-    <<set $hasSword = true>>
+-> Buy the sword. <<if $gold >= 8 and not $hasSword>>
+    <<set $gold to $gold - 8>>
+    <<set $hasSword>>
     Merchant: Excellent! You now have {$gold} gold remaining.
--> I cannot afford it. #if $gold < 8
+-> I cannot afford it. <<if $gold < 8>>
     Merchant: Come back when your purse is heavier.
 -> No thank you.
     Merchant: Perhaps another time.
@@ -271,6 +307,45 @@ Merchant: May that blade serve you well on the road ahead!
 <<else>>
 Merchant: Safe travels, friend!
 <<endif>>
+===
+''';
+
+/// Yarn 2.x additions: `<<declare>>`, option conditions, `and`/`or`/`not`/
+/// `xor` and the word operators, `{$var}` in speaker names and command
+/// arguments, quoted command arguments and escapes.
+const _kExpressionsYarn = r'''
+title: Start
+---
+<<declare $gold = 12>>
+<<declare $reputation = 2>>
+<<declare $hasPass = false>>
+<<declare $guard = "Bram">>
+// A declare keeps what the store already holds; a set starts each visit over.
+<<set $paid to false>>
+{$guard}: Halt! The bridge toll is 10 gold \#per head\#. \{No haggling.\}
+{$guard}: You carry {$gold} gold and your reputation is {$reputation}.
+-> Pay the toll. <<if $gold >= 10 and not $hasPass>>
+    <<set $gold to $gold - 10>>
+    <<set $paid = true>>
+    {$guard}: Pleasure doing business. {$gold} gold left.
+-> Show your pass. <<if $hasPass>>
+    {$guard}: Official business \[stamped\]. Go on through.
+-> Talk your way past. <<if $reputation gte 3 or $gold lt 5>>
+    {$guard}: Hah! Fine, off with you.
+    <<set $reputation to $reputation + 1>>
+-> Turn back.
+    <<set $reputation = $reputation - 1>>
+    {$guard}: Wise. Come back with coin.
+    <<stop>>
+<<if $hasPass xor $paid>>
+Narrator: Exactly one of pass or payment got you across.
+<<elseif $hasPass and $paid>>
+Narrator: A pass AND the toll? Bram thanks you for the donation.
+<<else>>
+Narrator: Neither pass nor payment — a silver tongue, then.
+<<endif>>
+<<toast "Bridge crossed" {$gold}>>
+Narrator: Escapes keep text literal: \#not-a-tag, \{braces\}, \<\<not a command\>\> and a \\ backslash.
 ===
 ''';
 
@@ -449,6 +524,27 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
         _runner = _makeRunner(_kVariablesYarn, 'merchant', vars: _vars);
         _statusMessage =
             'Tap Start — watch \$gold and \$hasSword update in real time';
+      case _Demo.expressions:
+        _vars = DialogueVariableStore();
+        final cmds = DialogueCommandRegistry()
+          ..register('toast', (ctx) async {
+            if (mounted) {
+              setState(
+                () => _commandLog.insert(
+                  0,
+                  '<<toast>> args: [${ctx.args.map((a) => "'$a'").join(', ')}]',
+                ),
+              );
+            }
+          });
+        _runner = _makeRunner(
+          _kExpressionsYarn,
+          'bridge',
+          vars: _vars,
+          commands: cmds,
+        );
+        _statusMessage =
+            'Tap Start — then give yourself a pass or gold and replay';
       case _Demo.commands:
         final cmds = DialogueCommandRegistry();
         cmds.register('flash', (ctx) async {
@@ -538,8 +634,11 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
       _statusMessage = 'Failed to load embervale.yarn: $e';
     } finally {
       _assetLoading = false;
-      if (mounted)
+      if (mounted && _runner != null) {
         setState(() => _statusMessage = 'Tap to begin — The Rusty Anchor Inn');
+      } else if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -645,10 +744,10 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.15),
+                    color: Colors.green.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.green.withOpacity(0.5),
+                      color: Colors.green.withValues(alpha: 0.5),
                       width: 1,
                     ),
                   ),
@@ -673,7 +772,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
             Text(
               _statusMessage,
               style: TextStyle(
-                color: _demo.accentColor.withOpacity(0.85),
+                color: _demo.accentColor.withValues(alpha: 0.85),
                 fontSize: 11,
               ),
             ),
@@ -699,19 +798,23 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
           // Background world
           CustomPaint(painter: _WorldPainter(_demo.accentColor)),
 
-          // Variables / asset-file demo: live variable store panel
-          if (_demo == _Demo.variables || _demo == _Demo.assetFile)
+          // Variables / expressions / asset-file demo: live variable store
+          if (_demo == _Demo.variables ||
+              _demo == _Demo.expressions ||
+              _demo == _Demo.assetFile)
             _buildVariablesPanel(),
 
           // Commands / asset-file demo: flash overlay
           if ((_demo == _Demo.commands || _demo == _Demo.assetFile) &&
               _flashColor != null)
             Positioned.fill(
-              child: Container(color: _flashColor!.withOpacity(0.30)),
+              child: Container(color: _flashColor!.withValues(alpha: 0.30)),
             ),
 
-          // Commands / asset-file demo: command log
-          if ((_demo == _Demo.commands || _demo == _Demo.assetFile) &&
+          // Commands / expressions / asset-file demo: command log
+          if ((_demo == _Demo.commands ||
+                  _demo == _Demo.expressions ||
+                  _demo == _Demo.assetFile) &&
               _commandLog.isNotEmpty)
             _buildCommandLog(),
 
@@ -741,7 +844,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
                             Text(
                               'Loading embervale.yarn…',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.45),
+                                color: Colors.white.withValues(alpha: 0.45),
                                 fontSize: 13,
                               ),
                             ),
@@ -752,14 +855,14 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
                           children: [
                             Icon(
                               _demo.icon,
-                              color: _demo.accentColor.withOpacity(0.25),
+                              color: _demo.accentColor.withValues(alpha: 0.25),
                               size: 52,
                             ),
                             const SizedBox(height: 12),
                             Text(
                               'Tap to begin',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.25),
+                                color: Colors.white.withValues(alpha: 0.25),
                                 fontSize: 14,
                               ),
                             ),
@@ -807,7 +910,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
                     color: const Color(0xF0060D18),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _demo.accentColor.withOpacity(0.4),
+                      color: _demo.accentColor.withValues(alpha: 0.4),
                       width: 1,
                     ),
                   ),
@@ -851,7 +954,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
       height: 52,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         border: Border.all(color: color, width: 2),
       ),
       child: Center(
@@ -874,8 +977,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
   Widget _buildVariablesPanel() {
     final vars = _vars;
     if (vars == null) return const SizedBox.shrink();
-    final gold = vars.getOrDefault<int>('gold', 10);
-    final hasSword = vars.getOrDefault<bool>('hasSword', false);
+    final names = vars.names.toList()..sort();
 
     return Positioned(
       top: 12,
@@ -884,19 +986,49 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
         accentColor: const Color(0xFFAB47BC),
         title: 'DialogueVariableStore',
         children: [
-          _monitorRow(
-            '\$gold',
-            '$gold',
-            gold >= 8 ? const Color(0xFF66BB6A) : const Color(0xFFFF5252),
-          ),
-          _monitorRow(
-            '\$hasSword',
-            '$hasSword',
-            hasSword ? const Color(0xFF66BB6A) : const Color(0xFF78909C),
-          ),
+          if (names.isEmpty)
+            const Text(
+              'empty — <<declare>> fills it on Start',
+              style: TextStyle(color: Colors.white30, fontSize: 9.5),
+            ),
+          for (final name in names) _variableRow(name, vars.getRaw(name)),
         ],
       ),
     );
+  }
+
+  Widget _variableRow(String name, Object? value) {
+    final color = switch (value) {
+      true => const Color(0xFF66BB6A),
+      false => const Color(0xFF78909C),
+      num() => const Color(0xFFCE93D8),
+      String() => const Color(0xFF29B6F6),
+      _ => Colors.white70,
+    };
+    final shown = value is String ? '"$value"' : '$value';
+    return _monitorRow('\$$name', shown, color);
+  }
+
+  // Expressions demo: change the store from Dart between runs.
+  void _togglePass() {
+    final vars = _vars;
+    if (vars == null) return;
+    setState(
+      () => vars.set('hasPass', !vars.getOrDefault<bool>('hasPass', false)),
+    );
+  }
+
+  void _addGold(int amount) {
+    final vars = _vars;
+    if (vars == null) return;
+    setState(() => vars.set('gold', vars.getOrDefault<int>('gold', 12) + amount));
+  }
+
+  void _resetStore() {
+    setState(() {
+      _vars?.clear();
+      _commandLog.clear();
+    });
   }
 
   Widget _buildCommandLog() {
@@ -1015,8 +1147,8 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
       constraints: BoxConstraints(minWidth: minWidth ?? 140, maxWidth: 200),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.72),
-        border: Border.all(color: accentColor.withOpacity(0.45), width: 1),
+        color: Colors.black.withValues(alpha: 0.72),
+        border: Border.all(color: accentColor.withValues(alpha: 0.45), width: 1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -1096,13 +1228,13 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: isActive
-              ? d.accentColor.withOpacity(0.18)
+              ? d.accentColor.withValues(alpha: 0.18)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isActive
-                ? d.accentColor.withOpacity(0.85)
-                : Colors.white.withOpacity(0.15),
+                ? d.accentColor.withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.15),
             width: isActive ? 1.5 : 1,
           ),
         ),
@@ -1167,26 +1299,75 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
           Colors.white24,
           canAdvance ? () => r!.advance() : null,
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         // Demo-specific extras
-        if (_demo == _Demo.hubSpoke && isRunning) ...[
-          Text(
-            'Current node: ${r?.signals.activeNodeTitle.value ?? '—'}',
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
-          ),
-        ],
-        if (_demo == _Demo.commands && isRunning)
-          Text(
-            'Flash: ${_flashColor != null ? "active" : "off"}',
-            style: TextStyle(
-              color: _flashColor != null
-                  ? const Color(0xFFFF7043)
-                  : Colors.white38,
-              fontSize: 11,
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: _demoExtras(r, isRunning),
+              ),
             ),
           ),
+        ),
       ],
     );
+  }
+
+  List<Widget> _demoExtras(DialogueRunner? r, bool isRunning) {
+    final storeEditable = !isRunning && _vars != null;
+    return switch (_demo) {
+      _Demo.hubSpoke when isRunning => [
+        Text(
+          'Current node: ${r?.signals.activeNodeTitle.value ?? '—'}',
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+      ],
+      _Demo.commands when isRunning => [
+        Text(
+          'Flash: ${_flashColor != null ? "active" : "off"}',
+          style: TextStyle(
+            color: _flashColor != null
+                ? const Color(0xFFFF7043)
+                : Colors.white38,
+            fontSize: 11,
+          ),
+        ),
+      ],
+      _Demo.variables => [
+        _actionButton(
+          'Reset store',
+          const Color(0xFFAB47BC),
+          storeEditable ? _resetStore : null,
+        ),
+      ],
+      _Demo.expressions => [
+        _actionButton(
+          (_vars?.getOrDefault<bool>('hasPass', false) ?? false)
+              ? 'Drop pass'
+              : 'Give pass',
+          _demo.accentColor,
+          storeEditable ? _togglePass : null,
+        ),
+        const SizedBox(width: 6),
+        _actionButton(
+          '+5 gold',
+          const Color(0xFFFFCA28),
+          storeEditable ? () => _addGold(5) : null,
+        ),
+        const SizedBox(width: 6),
+        _actionButton(
+          'Reset',
+          const Color(0xFF78909C),
+          storeEditable ? _resetStore : null,
+        ),
+      ],
+      _ => const [],
+    };
   }
 
   Widget _actionButton(String label, Color color, VoidCallback? onTap) {
@@ -1197,10 +1378,10 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: enabled ? color.withOpacity(0.18) : Colors.transparent,
+          color: enabled ? color.withValues(alpha: 0.18) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: enabled ? color.withOpacity(0.7) : Colors.white12,
+            color: enabled ? color.withValues(alpha: 0.7) : Colors.white12,
             width: 1,
           ),
         ),
@@ -1230,7 +1411,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
           color: const Color(0xFF04080F),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: _demo.accentColor.withOpacity(0.30),
+            color: _demo.accentColor.withValues(alpha: 0.30),
             width: 1,
           ),
         ),
@@ -1241,7 +1422,7 @@ class _NarrativeSystemScreenState extends State<NarrativeSystemScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
               decoration: BoxDecoration(
-                color: _demo.accentColor.withOpacity(0.08),
+                color: _demo.accentColor.withValues(alpha: 0.08),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(5),
                 ),
@@ -1322,17 +1503,17 @@ class _AdvanceButtonState extends State<_AdvanceButton> {
           height: 48,
           decoration: BoxDecoration(
             color: _pressed
-                ? widget.accentColor.withOpacity(0.30)
-                : widget.accentColor.withOpacity(0.14),
+                ? widget.accentColor.withValues(alpha: 0.30)
+                : widget.accentColor.withValues(alpha: 0.14),
             shape: BoxShape.circle,
             border: Border.all(
-              color: widget.accentColor.withOpacity(0.70),
+              color: widget.accentColor.withValues(alpha: 0.70),
               width: 1.5,
             ),
             boxShadow: enabled
                 ? [
                     BoxShadow(
-                      color: widget.accentColor.withOpacity(0.25),
+                      color: widget.accentColor.withValues(alpha: 0.25),
                       blurRadius: 12,
                     ),
                   ]
@@ -1380,15 +1561,15 @@ class _WorldPainter extends CustomPainter {
     final glow = Paint()..style = PaintingStyle.fill;
     for (final (fx, fy) in _dots) {
       final c = Offset(fx * size.width, fy * size.height);
-      glow.color = accentColor.withOpacity(0.055);
+      glow.color = accentColor.withValues(alpha: 0.055);
       canvas.drawCircle(c, 36, glow);
-      glow.color = accentColor.withOpacity(0.028);
+      glow.color = accentColor.withValues(alpha: 0.028);
       canvas.drawCircle(c, 58, glow);
     }
 
     // Subtle grid
     final grid = Paint()
-      ..color = Colors.white.withOpacity(0.028)
+      ..color = Colors.white.withValues(alpha: 0.028)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
     const step = 56.0;

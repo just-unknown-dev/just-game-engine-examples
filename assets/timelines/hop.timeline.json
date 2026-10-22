@@ -1,0 +1,101 @@
+{
+  "formatVersion": 2,
+  "name": "hop",
+  "duration": 1.0,
+  "fps": 30,
+  "wrap": "once",
+  "tracks": [
+    {
+      "kind": "property",
+      "name": "Jump",
+      "component": "TransformComponent",
+      "field": "position",
+      "channel": "y",
+      "mode": "relative",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 0.0,
+          "out": [
+            0.15,
+            -40.0
+          ]
+        },
+        {
+          "t": 0.45,
+          "v": -80.0,
+          "in": [
+            -0.15,
+            0.0
+          ],
+          "out": [
+            0.15,
+            0.0
+          ],
+          "m": "flat"
+        },
+        {
+          "t": 0.9,
+          "v": 0.0,
+          "in": [
+            -0.15,
+            -40.0
+          ]
+        },
+        {
+          "t": 1.0,
+          "v": 0.0
+        }
+      ]
+    },
+    {
+      "kind": "property",
+      "name": "Squash",
+      "component": "TransformComponent",
+      "field": "scale",
+      "channel": "y",
+      "keys": [
+        {
+          "t": 0.0,
+          "v": 0.7,
+          "i": "eased",
+          "e": "easeOutElastic"
+        },
+        {
+          "t": 0.4,
+          "v": 1.0
+        },
+        {
+          "t": 0.85,
+          "v": 1.0,
+          "i": "eased",
+          "e": "easeOutQuad"
+        },
+        {
+          "t": 0.92,
+          "v": 0.75,
+          "i": "eased",
+          "e": "easeOutElastic"
+        },
+        {
+          "t": 1.0,
+          "v": 1.0
+        }
+      ]
+    },
+    {
+      "kind": "event",
+      "name": "Feet",
+      "events": [
+        {
+          "time": 0.05,
+          "name": "hop"
+        },
+        {
+          "time": 0.9,
+          "name": "land"
+        }
+      ]
+    }
+  ]
+}

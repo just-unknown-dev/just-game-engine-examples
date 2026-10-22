@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "kind": "screen",
+  "gradientMap": {
+    "stops": [
+      [
+        0.0,
+        4278195200
+      ],
+      [
+        0.5,
+        4280264762
+      ],
+      [
+        1.0,
+        4291362752
+      ]
+    ],
+    "amount": 1.0
+  },
+  "scanlines": {
+    "amount": 0.25,
+    "size": 3.0
+  },
+  "vignette": {
+    "amount": 0.7,
+    "softness": 0.45
+  }
+}

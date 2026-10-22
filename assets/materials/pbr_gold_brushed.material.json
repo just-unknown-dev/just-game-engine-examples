@@ -1,0 +1,6 @@
+{
+  "formatVersion": 1,
+  "parent": "assets/materials/pbr_gold.material.json",
+  "color": 4293441632,
+  "roughness": 0.6
+}

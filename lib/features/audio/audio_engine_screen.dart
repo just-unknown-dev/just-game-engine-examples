@@ -1,39 +1,78 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:just_game_engine/just_game_engine.dart';
 
+import '../../core/engine/demo_engine.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+const String _sfxClip = 'assets/audio/test_sfx.wav';
+const String _musicClip = 'assets/audio/test_music.mp3';
+
 class _SfxRipple {
   double age = 0;
   final double maxAge;
-  _SfxRipple({this.maxAge = 1.4});
+
+  /// Where in the world it went off (a 3-D one-shot); null: screen centre.
+  final Offset? at;
+  _SfxRipple({this.maxAge = 1.4, this.at});
   double get t => (age / maxAge).clamp(0.0, 1.0);
   bool get dead => age >= maxAge;
   void tick(double dt) => age += dt;
 }
 
+/// One orbiting 3-D source of the Spatial demo: an entity with a
+/// [TransformComponent] the ticker moves and an [AudioSourceComponent] with
+/// `is3d: true`.
 class _Spatial3dSource {
   final double radius;
   final double angularSpeed;
   final Color color;
   final String label;
+  final String clip;
+  final double pitch;
   double angle;
+
+  /// The entity while the Spatial demo is built.
+  Entity? entity;
+  AudioSourceComponent? audio;
 
   _Spatial3dSource({
     required this.radius,
     required this.angularSpeed,
     required this.color,
     required this.label,
+    required this.clip,
+    this.pitch = 1.0,
     this.angle = 0.0,
   });
 
+  /// World position (orbiting the world origin).
   Offset get pos => Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+
+  /// World velocity, units per second — for the doppler readout.
+  Offset get velocity => Offset(
+    -math.sin(angle) * radius * angularSpeed,
+    math.cos(angle) * radius * angularSpeed,
+  );
+
   void tick(double dt) => angle += angularSpeed * dt;
+}
+
+/// What the painter shows for one 3-D source: where it is and how the
+/// listener hears it ([AudioSpatial.mix]).
+class _SourceView {
+  final Offset pos;
+  final Color color;
+  final String label;
+  final AudioSpatialMix mix;
+  final bool playing;
+  const _SourceView(this.pos, this.color, this.label, this.mix, this.playing);
 }
 
 class _CompTag {
@@ -47,6 +86,13 @@ class _EcsRow {
   final List<_CompTag> tags;
   bool flash = false;
   double flashAge = 0;
+
+  /// The component its buttons drive (`play()/pause()/resume()/stop()`);
+  /// null for the one-shot row.
+  AudioRequests? target;
+
+  /// Live state read back from the component.
+  String state = '';
   _EcsRow(this.entity, this.tags);
 }
 
@@ -107,9 +153,9 @@ enum _Demo {
     dspEffects =>
       'AudioEffect carries a type + param map applied per voice. Reverb, lowpass, highpass, EQ and delay toggle independently.',
     spatial3d =>
-      'is3d:true on AudioSourceComponent reads TransformComponent every frame and calls setVoice3DPosition. AudioListenerComponent marks the ear.',
+      'Three entities orbit with AudioSourceComponent(is3d: true): full volume within minDistance, silent beyond maxDistance, faded by rolloff, muffled by farCutoff, pitched by dopplerLevel. Drag the AudioListenerComponent (white) around — AudioSystem places every source once per frame.',
     ecsIntegration =>
-      'AudioSourceComponent for persistent sources. AudioPlayComponent triggers one-shot playback. Pause/Resume/StopComponent are fire-and-forget.',
+      'AudioSourceComponent / AudioStreamComponent are data; play(), pause(), resume() and stop() ask the AudioSystem (AudioRequests). One-shots need no component: AudioSystem.playOneShot().',
     voicePool =>
       'VoicePool tracks up to 64 handles. On overflow the oldest unprotected voice is evicted. Music voices are protected.',
     streaming =>
@@ -141,7 +187,11 @@ enum _Demo {
           'engine.audio.pauseSfx(id!);\n'
           'engine.audio.resumeSfx(id!);\n'
           'engine.audio.stopSfx(id!);\n'
-          'engine.audio.stopAllSfx();',
+          'engine.audio.stopAllSfx();\n\n'
+          '// From gameplay code — nothing added to an entity:\n'
+          'world.getSystem<AudioSystem>()?.playOneShot(\n'
+          "  'assets/audio/hit.wav', pitch: 1.2,\n"
+          ');',
     channels =>
       'engine.audio.setMasterVolume(1.0);\n'
           'engine.audio.setChannelVolume(AudioChannel.master,  1.0);\n'
@@ -166,38 +216,65 @@ enum _Demo {
           '  ],\n'
           ');',
     spatial3d =>
-      '// Mark the listener entity:\n'
-          'listener.addComponent(AudioListenerComponent());\n'
-          'listener.addComponent(TransformComponent(position: Vector3.fromOffset(playerPos)));\n\n'
-          '// Attach a 3D source:\n'
-          'source.addComponent(TransformComponent(position: Vector3.fromOffset(emitterPos)));\n'
-          'source.addComponent(AudioSourceComponent(\n'
-          "  clipPath: 'assets/audio/ambient.ogg',\n"
+      '// DefaultSystem.audio adds AudioSystem(engine: engine.audio,\n'
+          '//   camera: engine.cameraSystem.mainCamera).\n'
+          "// The ear: at its entity (atCamera / faceCamera hear from the camera).\n"
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(),\n'
+          '  AudioListenerComponent(atCamera: false),\n'
+          "], name: 'Listener');\n\n"
+          '// A source heard from where its entity is:\n'
+          'final hum = AudioSourceComponent(\n'
+          "  clipPath: 'assets/audio/test_sfx.wav',\n"
           '  loop: true,\n'
           '  is3d: true,\n'
-          '  channel: AudioChannel.ambient,\n'
-          '));\n'
-          '// AudioSystem updates position every frame automatically.',
+          '  minDistance: 40,   // full volume inside\n'
+          '  maxDistance: 320,  // silent beyond\n'
+          '  rolloff: AudioRolloff.inverse, // .linear, .none\n'
+          '  dopplerLevel: 0.5, // pitch shift from motion\n'
+          '  farCutoff: 600,    // Hz low-pass at maxDistance\n'
+          ');\n'
+          'world.createEntityWithComponents([\n'
+          '  TransformComponent(position: Vector3(120, 0, 0)),\n'
+          '  hum,\n'
+          "], name: 'Drone');\n"
+          'hum.play();\n'
+          '// Move the entities; changes to the fields apply at once.\n'
+          'engine.audio.speedOfSound = 600; // world units / s\n\n'
+          '// A placed one-shot:\n'
+          'world.getSystem<AudioSystem>()?.playOneShot(\n'
+          "  'assets/audio/test_sfx.wav',\n"
+          '  position: Vector3(80, -40, 0),\n'
+          '  spatial: const AudioSpatial(minDistance: 40, maxDistance: 320),\n'
+          ');',
     ecsIntegration =>
-      '// Persistent looping source:\n'
-          'entity.addComponent(AudioSourceComponent(\n'
+      '// Data on entities; AudioSystem plays them.\n'
+          'final fire = AudioSourceComponent(\n'
           "  clipPath: 'assets/audio/fire.ogg',\n"
-          '  loop: true, volume: 0.8, pitch: 1.1,\n'
+          '  loop: true, volume: 0.8, pitch: 0.7,\n'
+          '  playOnAdd: false, // true: starts when the system sees it\n'
+          '  channel: AudioChannel.ambient,\n'
           '  effects: [AudioEffect.reverb()],\n'
-          '));\n\n'
-          '// One-shot trigger (auto-removes):\n'
-          'entity.addComponent(AudioPlayComponent(\n'
-          "  clipPath: 'assets/audio/coin.wav', pitch: 1.3,\n"
-          '));\n\n'
-          '// State triggers:\n'
-          'entity.addComponent(AudioPauseComponent());\n'
-          'entity.addComponent(AudioResumeComponent());\n'
-          'entity.addComponent(AudioStopComponent());\n\n'
+          ');\n'
+          "world.createEntityWithComponents([fire], name: 'FireEmitter');\n\n"
+          '// Control — carried out at the next update (AudioRequests):\n'
+          'fire.play();   // from the start\n'
+          'fire.pause();\n'
+          'fire.resume();\n'
+          'fire.stop();\n'
+          'fire.handle;   // sound id while it plays, else null\n\n'
+          '// One-shot, nothing added to an entity:\n'
+          'world.getSystem<AudioSystem>()?.playOneShot(\n'
+          "  'assets/audio/coin.wav', pitch: 1.3,\n"
+          ');\n\n'
           '// Streaming via ECS:\n'
-          'entity.addComponent(AudioStreamComponent(\n'
+          'final radio = AudioStreamComponent(\n'
           "  path: 'assets/audio/bgm.mp3',\n"
+          '  playOnAdd: false,\n'
           '  fadeInDuration: const Duration(seconds: 2),\n'
-          '));',
+          ');\n'
+          "world.createEntityWithComponents([radio], name: 'Radio');\n"
+          'radio.play(); // .pause() .resume() .stop(), radio.isPlaying',
     voicePool =>
       '// Default pool capacity = 64.  Slot 0 → protected music voice.\n'
           '// Each playSfx call registers into the pool:\n'
@@ -220,11 +297,13 @@ enum _Demo {
           'await stream.resume();\n'
           'await stream.stop();\n'
           'await stream.dispose();\n\n'
-          '// Or via ECS (hands-free):\n'
-          'entity.addComponent(AudioStreamComponent(\n'
-          '  path: path,\n'
+          '// Or via ECS (AudioSystem opens and drives it):\n'
+          'final radio = AudioStreamComponent(\n'
+          "  path: 'assets/audio/bgm.mp3',\n"
           '  fadeInDuration: const Duration(seconds: 2),\n'
-          '));',
+          ');\n'
+          'world.createEntityWithComponents([radio]);\n'
+          'radio.pause(); radio.resume(); radio.stop();',
   };
 }
 
@@ -242,7 +321,11 @@ class AudioEngineScreen extends StatefulWidget {
 class _AudioEngineScreenState extends State<AudioEngineScreen>
     with SingleTickerProviderStateMixin {
   // ── Engine ────────────────────────────────────────────────────────────────
-  late final Engine _engine;
+  // The app's shared engine: already running, ticked by the GameWidget below
+  // (fixed steps, the per-frame phase and the audio engine).
+  late final Engine _engine = demoEngine;
+  late final World _world = _engine.world;
+  // Only drives the canvas animation and the live stats (setState).
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
   double _elapsed = 0;
@@ -280,9 +363,25 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
 
   // ── Spatial 3D ────────────────────────────────────────────────────────────
   final List<_Spatial3dSource> _sources = [];
+  Entity? _listener;
+  bool _spatialPlaying = false;
+  bool _spatialPaused = false;
+  AudioRolloff _rolloff = AudioRolloff.inverse;
+  double _minDistance = 40;
+  double _maxDistance = 320;
+  double _doppler = 0.5;
+  bool _farCutoff = true;
+  bool _listenerAtCamera = false;
+  final math.Random _rng = math.Random();
 
   // ── ECS ───────────────────────────────────────────────────────────────────
   final List<_EcsRow> _ecsRows = [];
+
+  // ── Shared-engine state this screen changes and puts back ─────────────────
+  final Map<AudioChannel, double> _savedVolumes = {};
+  bool _savedMuted = false;
+  double _savedSpeedOfSound = AudioSpatial.speedOfSoundInAir;
+  Color _savedBackground = const Color(0xFF1a1a2e);
 
   // ── Voice pool ────────────────────────────────────────────────────────────
   int _voiceCount = 0;
@@ -302,16 +401,44 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
   @override
   void initState() {
     super.initState();
-    _engine = Engine();
-    _ticker = createTicker(_onTick)..start();
+    final audio = _engine.audio;
+    // The engine is shared by every demo: remember what this screen changes.
+    for (final channel in AudioChannel.values) {
+      _savedVolumes[channel] = audio.getChannelVolume(channel);
+    }
+    _savedMuted = audio.isMuted;
+    _savedSpeedOfSound = audio.speedOfSound;
+    _savedBackground = _engine.rendering.backgroundColor;
+    _masterVol = audio.getChannelVolume(AudioChannel.master);
+    _musicVol = audio.getChannelVolume(AudioChannel.music);
+    _sfxVol = audio.getChannelVolume(AudioChannel.sfx);
+    _voiceVol = audio.getChannelVolume(AudioChannel.voice);
+    _ambientVol = audio.getChannelVolume(AudioChannel.ambient);
+    _muted = audio.isMuted;
+    // Doppler works in world units per second; this world is in pixels.
+    audio.speedOfSound = 600;
+    _engine.rendering.backgroundColor = const Color(0xFF060D18);
+
     _initSources();
     _initEcsRows();
+    _buildDemo();
+    _ticker = createTicker(_onTick)..start();
   }
 
   @override
   void dispose() {
     _ticker.dispose();
     _stream?.dispose();
+    final audio = _engine.audio;
+    unawaited(_engine.music.stop());
+    unawaited(audio.stopAllSfx());
+    _savedVolumes.forEach(audio.setChannelVolume);
+    if (audio.isMuted != _savedMuted) audio.toggleMute();
+    audio.speedOfSound = _savedSpeedOfSound;
+    _engine.rendering.backgroundColor = _savedBackground;
+    // Destroys this demo's entities (AudioSystem stops their sounds as it
+    // goes) and leaves the shared engine running.
+    DemoEngine.reset(_engine);
     super.dispose();
   }
 
@@ -319,28 +446,32 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
     _sources
       ..add(
         _Spatial3dSource(
-          radius: 95,
-          angularSpeed: 0.8,
-          color: const Color(0xFFFF7043),
-          label: 'SFX',
-          angle: 0,
-        ),
-      )
-      ..add(
-        _Spatial3dSource(
-          radius: 145,
-          angularSpeed: -0.5,
+          radius: 150,
+          angularSpeed: -0.45,
           color: const Color(0xFF29B6F6),
-          label: 'Ambient',
+          label: 'Radio',
+          clip: _musicClip,
           angle: math.pi * 2 / 3,
         ),
       )
       ..add(
         _Spatial3dSource(
-          radius: 65,
-          angularSpeed: 1.2,
+          radius: 100,
+          angularSpeed: 0.8,
+          color: const Color(0xFFFF7043),
+          label: 'Drone',
+          clip: _sfxClip,
+          pitch: 0.6,
+        ),
+      )
+      ..add(
+        _Spatial3dSource(
+          radius: 60,
+          angularSpeed: 1.3,
           color: const Color(0xFF66BB6A),
-          label: 'Voice',
+          label: 'Chime',
+          clip: _sfxClip,
+          pitch: 1.5,
           angle: math.pi * 4 / 3,
         ),
       );
@@ -350,21 +481,150 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
     _ecsRows
       ..add(
         _EcsRow('Player', [
+          const _CompTag('TransformComponent', Color(0xFF78909C)),
           const _CompTag('AudioListenerComponent', Color(0xFF29B6F6)),
           const _CompTag('AudioSourceComponent', Color(0xFF66BB6A)),
         ]),
       )
       ..add(
         _EcsRow('FireEmitter', [
-          const _CompTag('AudioSourceComponent  loop+3D', Color(0xFFFF7043)),
-          const _CompTag('TransformComponent', Color(0xFF78909C)),
+          const _CompTag('AudioSourceComponent  loop', Color(0xFFFF7043)),
+          const _CompTag('  ambient · reverb · ×0.7', Color(0xFFFF7043)),
+        ]),
+      )
+      ..add(
+        _EcsRow('Radio', [
+          const _CompTag('AudioStreamComponent', Color(0xFF78909C)),
+          const _CompTag('  fadeIn 2 s · music', Color(0xFF78909C)),
         ]),
       )
       ..add(
         _EcsRow('Coin', [
-          const _CompTag('AudioPlayComponent', Color(0xFFFFCA28)),
+          const _CompTag('no component —', Color(0xFFFFCA28)),
+          const _CompTag('AudioSystem.playOneShot', Color(0xFFFFCA28)),
         ]),
       );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // World per demo
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// A clean world for [_demo]: the AudioSystem (and a RenderSystem for the
+  /// Spatial demo's entities), plus the entities the demo plays through.
+  /// The other demos call the AudioEngine directly.
+  void _buildDemo() {
+    DemoEngine.reset(
+      _engine,
+      include: const {DefaultSystem.rendering, DefaultSystem.audio},
+    );
+    _listener = null;
+    for (final s in _sources) {
+      s
+        ..entity = null
+        ..audio = null;
+    }
+    for (final row in _ecsRows) {
+      row
+        ..target = null
+        ..state = '';
+    }
+    _spatialPlaying = false;
+    _spatialPaused = false;
+    switch (_demo) {
+      case _Demo.spatial3d:
+        _buildSpatialWorld();
+      case _Demo.ecsIntegration:
+        _buildEcsWorld();
+      default:
+        break;
+    }
+  }
+
+  void _selectDemo(_Demo d) {
+    if (d == _demo) return;
+    setState(() {
+      _demo = d;
+      _buildDemo();
+      _status = d == _Demo.spatial3d
+          ? 'Press ▶ Play, then drag the listener'
+          : 'Ready.';
+    });
+  }
+
+  void _buildSpatialWorld() {
+    _listener = _world.createEntityWithComponents([
+      TransformComponent(),
+      AudioListenerComponent(atCamera: _listenerAtCamera),
+      RenderableComponent(
+        renderable: CircleRenderable(
+          radius: 11,
+          fillColor: Colors.white,
+          strokeColor: Colors.white24,
+          strokeWidth: 10,
+        ),
+      ),
+    ], name: 'Listener');
+    for (final s in _sources) {
+      final p = s.pos;
+      final audio = AudioSourceComponent(
+        clipPath: s.clip,
+        loop: true,
+        playOnAdd: false,
+        is3d: true,
+        volume: 0.8,
+        pitch: s.pitch,
+        channel: AudioChannel.ambient,
+        minDistance: _minDistance,
+        maxDistance: _maxDistance,
+        rolloff: _rolloff,
+        dopplerLevel: _doppler,
+        farCutoff: _farCutoff ? 600 : 0,
+      );
+      s
+        ..audio = audio
+        ..entity = _world.createEntityWithComponents([
+          TransformComponent(position: Vector3(p.dx, p.dy, 0)),
+          audio,
+          RenderableComponent(
+            renderable: CircleRenderable(radius: 9, fillColor: s.color),
+          ),
+        ], name: s.label);
+    }
+  }
+
+  void _buildEcsWorld() {
+    final voice = AudioSourceComponent(
+      clipPath: _sfxClip,
+      playOnAdd: false,
+      volume: 0.9,
+      channel: AudioChannel.voice,
+    );
+    _world.createEntityWithComponents([
+      TransformComponent(),
+      AudioListenerComponent(),
+      voice,
+    ], name: 'Player');
+    final fire = AudioSourceComponent(
+      clipPath: _sfxClip,
+      loop: true,
+      playOnAdd: false,
+      volume: 0.7,
+      pitch: 0.7,
+      channel: AudioChannel.ambient,
+      effects: [AudioEffect.reverb(roomSize: 0.8, damping: 0.4, wetLevel: 0.5)],
+    );
+    _world.createEntityWithComponents([fire], name: 'FireEmitter');
+    final radio = AudioStreamComponent(
+      path: _musicClip,
+      playOnAdd: false,
+      volume: 0.7,
+      fadeInDuration: const Duration(seconds: 2),
+    );
+    _world.createEntityWithComponents([radio], name: 'Radio');
+    _ecsRows[0].target = voice;
+    _ecsRows[1].target = fire;
+    _ecsRows[2].target = radio;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -379,8 +639,16 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
     final dt = (elapsed - _lastTick).inMicroseconds / 1_000_000.0;
     _lastTick = elapsed;
     _elapsed += dt;
+    // Gameplay moves the 3-D sources; the AudioSystem reads their transforms
+    // once per rendered frame and the audio engine places them.
     for (final s in _sources) {
       s.tick(dt);
+      final p = s.pos;
+      s.entity?.getComponent<TransformComponent>()?.position.setValues(
+        p.dx,
+        p.dy,
+        0,
+      );
     }
     for (final r in _ripples) {
       r.tick(dt);
@@ -394,9 +662,20 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
           row.flashAge = 0;
         }
       }
+      row.state = switch (row.target) {
+        final AudioSourceComponent c =>
+          'handle: ${c.handle ?? '—'}${_pendingLabel(c)}',
+        final AudioStreamComponent c =>
+          'isPlaying: ${c.isPlaying}${_pendingLabel(c)}',
+        _ => row.target == null && row.entity == 'Coin' ? 'fire & forget' : '',
+      };
     }
-    _engine.audio.update();
     if (mounted) setState(() {});
+  }
+
+  static String _pendingLabel(AudioRequests c) {
+    final pending = c.pendingRequest;
+    return pending == null ? '' : '  (${pending.name}…)';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -408,7 +687,11 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
         ? (_musicPaused ? '⏸ music' : '▶ music')
         : '■ music';
     final mutedStr = _muted ? '  [MUTED]' : '';
-    return '$musicState  master:${(_masterVol * 100).round()}%  voices:$_voiceCount/$_voiceMax$mutedStr';
+    final hear = _engine.audio.listener.position;
+    final world = _demo == _Demo.spatial3d || _demo == _Demo.ecsIntegration
+        ? '  entities:${_world.entityCount}  listener:(${hear.x.round()}, ${hear.y.round()})'
+        : '';
+    return '$musicState  master:${(_masterVol * 100).round()}%  voices:$_voiceCount/$_voiceMax$mutedStr$world';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -585,51 +868,185 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
   // Spatial 3D
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _applyListener() {
-    _engine.audio.setListener3D(
-      const Audio3DListener(
-        position: Audio3DPosition(0, 0, 0),
-        forward: Audio3DPosition(0, 0, -1),
-        up: Audio3DPosition(0, 1, 0),
-      ),
-    );
-    setState(() => _status = 'setListener3D(pos:0,0,0  fwd:0,0,-1)');
-  }
+  /// The AudioSystem DemoEngine.reset added (DefaultSystem.audio).
+  AudioSystem? get _audioSystem => _world.getSystem<AudioSystem>();
 
-  void _applySourcePositions() {
-    for (final src in _sources) {
-      final p = src.pos;
-      if (_activeSfxId != null) {
-        _engine.audio.updateSfxPosition(
-          _activeSfxId!,
-          Audio3DPosition(p.dx, p.dy, 0),
-        );
+  /// Asks every 3-D source to [request] (`AudioRequests`): carried out by
+  /// the AudioSystem at its next update.
+  void _spatialRequest(AudioRequest request) {
+    for (final s in _sources) {
+      final audio = s.audio;
+      if (audio == null) continue;
+      switch (request) {
+        case AudioRequest.play:
+          audio.play();
+        case AudioRequest.pause:
+          audio.pause();
+        case AudioRequest.resume:
+          audio.resume();
+        case AudioRequest.stop:
+          audio.stop();
       }
     }
-    setState(() => _status = 'updateSfxPosition called for all sources');
+    setState(() {
+      switch (request) {
+        case AudioRequest.play:
+          _spatialPlaying = true;
+          _spatialPaused = false;
+        case AudioRequest.pause:
+          _spatialPaused = true;
+        case AudioRequest.resume:
+          _spatialPaused = false;
+        case AudioRequest.stop:
+          _spatialPlaying = false;
+          _spatialPaused = false;
+      }
+      _status = 'source.${request.name}() on 3 AudioSourceComponents';
+    });
+  }
+
+  /// Applies the sliders to every source: changes on a playing 3-D source
+  /// are heard at once (AudioSystem sends them with the next placement).
+  void _setSpatial(VoidCallback change) {
+    setState(change);
+    for (final s in _sources) {
+      s.audio
+        ?..minDistance = _minDistance
+        ..maxDistance = _maxDistance
+        ..rolloff = _rolloff
+        ..dopplerLevel = _doppler
+        ..farCutoff = _farCutoff ? 600 : 0;
+    }
+    setState(
+      () => _status =
+          'rolloff:${_rolloff.name}  min:${_minDistance.round()}  max:${_maxDistance.round()}  doppler:${_doppler.toStringAsFixed(2)}  farCutoff:${_farCutoff ? 600 : 0} Hz',
+    );
+  }
+
+  void _toggleListenerAtCamera() {
+    setState(() {
+      _listenerAtCamera = !_listenerAtCamera;
+      _listener?.getComponent<AudioListenerComponent>()?.atCamera =
+          _listenerAtCamera;
+      _status = _listenerAtCamera
+          ? 'AudioListenerComponent.atCamera = true — hears from the camera'
+          : 'AudioListenerComponent.atCamera = false — hears from its entity';
+    });
+  }
+
+  void _turnListener() {
+    final t = _listener?.getComponent<TransformComponent>();
+    if (t == null) return;
+    t.angle = (t.angle + math.pi / 2) % (math.pi * 2);
+    setState(
+      () => _status =
+          'Listener angle ${(t.angle * 180 / math.pi).round()}° — its rotation turns left/right',
+    );
+  }
+
+  void _moveListener(Offset local) {
+    final t = _listener?.getComponent<TransformComponent>();
+    if (t == null) return;
+    final w = _engine.cameraSystem.mainCamera.screenToWorld(local);
+    t.position.setValues(w.dx, w.dy, 0);
+  }
+
+  /// A placed one-shot near the listener: it stays where it was asked for.
+  void _spatialOneShot() {
+    final l = _listener?.getComponent<TransformComponent>()?.position;
+    final a = _rng.nextDouble() * math.pi * 2;
+    final d = 40 + _rng.nextDouble() * (_maxDistance * 0.8);
+    final at = Offset(
+      (l?.x ?? 0) + math.cos(a) * d,
+      (l?.y ?? 0) + math.sin(a) * d,
+    );
+    _audioSystem?.playOneShot(
+      _sfxClip,
+      pitch: 1.2,
+      position: Vector3(at.dx, at.dy, 0),
+      spatial: AudioSpatial(
+        minDistance: _minDistance,
+        maxDistance: math.max(_maxDistance, _minDistance),
+        rolloff: _rolloff,
+        farCutoff: _farCutoff ? 600 : 0,
+      ),
+    );
+    setState(() {
+      _ripples.add(_SfxRipple(maxAge: 1.2, at: at));
+      _status =
+          'playOneShot(position: (${at.dx.round()}, ${at.dy.round()}), spatial: …)';
+    });
+  }
+
+  /// How the listener hears each source right now, for the canvas labels —
+  /// the same [AudioSpatial.mix] the audio engine runs.
+  List<_SourceView> _sourceViews() {
+    final listener = _engine.audio.listener;
+    final speed = _engine.audio.speedOfSound;
+    return [
+      for (final s in _sources)
+        if (s.audio case final audio?)
+          _SourceView(
+            s.pos,
+            s.color,
+            s.label,
+            audio.spatial.mix(
+              listener: listener,
+              position: Audio3DPosition(s.pos.dx, s.pos.dy, 0),
+              velocity: Audio3DPosition(s.velocity.dx, s.velocity.dy, 0),
+              speedOfSound: speed,
+            ),
+            audio.handle != null,
+          ),
+    ];
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // ECS
   // ─────────────────────────────────────────────────────────────────────────
 
+  void _flash(int i) {
+    _ecsRows[i]
+      ..flash = true
+      ..flashAge = 0;
+  }
+
   void _triggerEcsPlay(int i) {
-    _ecsRows[i].flash = true;
-    _ecsRows[i].flashAge = 0;
-    _ripples.add(_SfxRipple());
-    setState(() => _status = 'AudioPlayComponent → ${_ecsRows[i].entity}');
+    final row = _ecsRows[i];
+    _flash(i);
+    final target = row.target;
+    if (target == null) {
+      // The Coin: nothing to control afterwards, so no component.
+      _audioSystem?.playOneShot(_sfxClip, pitch: 1.3, volume: 0.9);
+      _ripples.add(_SfxRipple());
+      setState(() => _status = "playOneShot('test_sfx.wav', pitch: 1.3)");
+      return;
+    }
+    target.play();
+    setState(
+      () => _status =
+          '${row.entity}: ${target.runtimeType}.play() — from the start',
+    );
   }
 
-  void _triggerEcsPause(int i) {
-    _ecsRows[i].flash = true;
-    _ecsRows[i].flashAge = 0;
-    setState(() => _status = 'AudioPauseComponent → ${_ecsRows[i].entity}');
-  }
-
-  void _triggerEcsStop(int i) {
-    _ecsRows[i].flash = true;
-    _ecsRows[i].flashAge = 0;
-    setState(() => _status = 'AudioStopComponent → ${_ecsRows[i].entity}');
+  void _triggerEcsRequest(int i, AudioRequest request) {
+    final row = _ecsRows[i];
+    final target = row.target;
+    if (target == null) return;
+    _flash(i);
+    switch (request) {
+      case AudioRequest.pause:
+        target.pause();
+      case AudioRequest.resume:
+        target.resume();
+      case AudioRequest.stop:
+        target.stop();
+      case AudioRequest.play:
+        target.play();
+    }
+    setState(
+      () => _status = '${row.entity}: ${target.runtimeType}.${request.name}()',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -763,9 +1180,12 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
                 ),
               ),
               const Spacer(),
-              const Text(
-                'AudioEngine  ·  MusicManager  ·  SoundEffectManager  ·  AudioStream',
-                style: TextStyle(color: Color(0xFF29B6F6), fontSize: 10),
+              const Flexible(
+                child: Text(
+                  'AudioEngine  ·  AudioSystem  ·  MusicManager  ·  SoundEffectManager  ·  AudioStream',
+                  style: TextStyle(color: Color(0xFF29B6F6), fontSize: 10),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -796,12 +1216,24 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
   }
 
   Widget _buildCanvas() {
-    return Container(
-      color: const Color(0xFF060D18),
-      child: CustomPaint(
-        painter: _AudioCanvasPainter(
-          demo: _demo,
-          elapsed: _elapsed,
+    // The GameWidget ticks the shared engine — without it on screen nothing
+    // runs the AudioSystem or the audio engine. The Spatial demo shows
+    // the world it draws; the other demos paint over it.
+    final spatial = _demo == _Demo.spatial3d;
+    final painter = CustomPaint(
+      painter: _AudioCanvasPainter(
+        demo: _demo,
+        camera: _engine.cameraSystem.mainCamera,
+        hearAt: Offset(
+          _engine.audio.listener.position.x,
+          _engine.audio.listener.position.y,
+        ),
+        hearRight: _listenerRight(),
+        sourceViews: spatial ? _sourceViews() : const [],
+        minDistance: _minDistance,
+        maxDistance: _maxDistance,
+        atCamera: _listenerAtCamera,
+        elapsed: _elapsed,
           accentColor: _demo.accentColor,
           musicPlaying: _musicPlaying,
           musicPaused: _musicPaused,
@@ -817,18 +1249,42 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
           dspHighpass: _dspHighpass,
           dspDelay: _dspDelay,
           dspEq: _dspEq,
-          sources: _sources,
           ecsRows: _ecsRows,
           voiceCount: _voiceCount,
           voiceMax: _voiceMax,
-          streamOpen: _streamOpen,
-          streamPlaying: _streamPlaying,
-          streamPaused: _streamPaused,
-          streamVol: _streamVol,
-        ),
-        child: const SizedBox.expand(),
+        streamOpen: _streamOpen,
+        streamPlaying: _streamPlaying,
+        streamPaused: _streamPaused,
+        streamVol: _streamVol,
+      ),
+      child: const SizedBox.expand(),
+    );
+    return Container(
+      color: const Color(0xFF060D18),
+      child: GameWidget(
+        engine: _engine,
+        showFPS: spatial,
+        overlay: spatial
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanDown: (d) => _moveListener(d.localPosition),
+                onPanUpdate: (d) => _moveListener(d.localPosition),
+                child: painter,
+              )
+            : painter,
       ),
     );
+  }
+
+  /// The listener's right ear direction (forward × up), from what the
+  /// AudioSystem last sent — turns with the listener entity's rotation.
+  Offset _listenerRight() {
+    final l = _engine.audio.listener;
+    final f = l.forward, u = l.up;
+    final rx = f.y * u.z - f.z * u.y;
+    final ry = f.z * u.x - f.x * u.z;
+    final len = math.sqrt(rx * rx + ry * ry);
+    return len < 1e-9 ? const Offset(1, 0) : Offset(rx / len, ry / len);
   }
 
   Widget _buildDemoSelector() {
@@ -844,7 +1300,7 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               itemCount: _Demo.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final d = _Demo.values[i];
                 final active = d == _demo;
@@ -870,7 +1326,7 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
                         ? d.accentColor.withValues(alpha: 0.7)
                         : const Color(0xFF1E2E40),
                   ),
-                  onSelected: (_) => setState(() => _demo = d),
+                  onSelected: (_) => _selectDemo(d),
                 );
               },
             ),
@@ -1095,25 +1551,91 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
 
   // ── Spatial ───────────────────────────────────────────────────────────────
   Widget _buildSpatialControls() {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final c = _Demo.spatial3d.accentColor;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _actionButton(
-          'Set Listener (0,0,0)',
-          _Demo.spatial3d.accentColor,
-          _applyListener,
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _actionButton(
+              '▶ Play',
+              c,
+              !_spatialPlaying ? () => _spatialRequest(AudioRequest.play) : null,
+            ),
+            _actionButton(
+              '⏸ Pause',
+              c,
+              _spatialPlaying && !_spatialPaused
+                  ? () => _spatialRequest(AudioRequest.pause)
+                  : null,
+            ),
+            _actionButton(
+              '⏵ Resume',
+              c,
+              _spatialPaused ? () => _spatialRequest(AudioRequest.resume) : null,
+            ),
+            _actionButton(
+              '⏹ Stop',
+              const Color(0xFFFF5252),
+              _spatialPlaying ? () => _spatialRequest(AudioRequest.stop) : null,
+            ),
+            _actionButton('💥 One-shot', c, _spatialOneShot),
+            _actionButton('↻ Turn listener', c, _turnListener),
+            _toggleChip(
+              'atCamera',
+              _listenerAtCamera,
+              (_) => _toggleListenerAtCamera(),
+              c,
+            ),
+            const SizedBox(width: 4),
+            for (final r in AudioRolloff.values)
+              _toggleChip(
+                r.name,
+                _rolloff == r,
+                (_) => _setSpatial(() => _rolloff = r),
+                c,
+              ),
+            _toggleChip(
+              'farCutoff 600 Hz',
+              _farCutoff,
+              (v) => _setSpatial(() => _farCutoff = v),
+              c,
+            ),
+          ],
         ),
-        _actionButton(
-          'Update Source Positions',
-          _Demo.spatial3d.accentColor,
-          _applySourcePositions,
-        ),
-        const SizedBox(width: 4),
-        const Text(
-          '3 sources orbit the listener  ·  volume ≈ 1 − dist/200',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 12,
+          runSpacing: 2,
+          children: [
+            _sliderRow(
+              'min',
+              _minDistance,
+              10,
+              120,
+              (v) => _setSpatial(() => _minDistance = v),
+              digits: 0,
+            ),
+            _sliderRow(
+              'max',
+              _maxDistance,
+              150,
+              500,
+              (v) => _setSpatial(() => _maxDistance = v),
+              digits: 0,
+            ),
+            _sliderRow(
+              'doppler',
+              _doppler,
+              0,
+              1,
+              (v) => _setSpatial(() => _doppler = v),
+            ),
+          ],
         ),
       ],
     );
@@ -1121,6 +1643,7 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
 
   // ── ECS ───────────────────────────────────────────────────────────────────
   Widget _buildEcsControls() {
+    final c = _Demo.ecsIntegration.accentColor;
     return Wrap(
       spacing: 6,
       runSpacing: 4,
@@ -1128,15 +1651,26 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
         for (int i = 0; i < _ecsRows.length; i++) ...[
           _actionButton(
             '▶ ${_ecsRows[i].entity}',
-            _Demo.ecsIntegration.accentColor,
+            c,
             () => _triggerEcsPlay(i),
           ),
-          _actionButton(
-            '⏸',
-            _Demo.ecsIntegration.accentColor,
-            () => _triggerEcsPause(i),
-          ),
-          _actionButton('⏹', const Color(0xFFFF5252), () => _triggerEcsStop(i)),
+          if (_ecsRows[i].target != null) ...[
+            _actionButton(
+              '⏸',
+              c,
+              () => _triggerEcsRequest(i, AudioRequest.pause),
+            ),
+            _actionButton(
+              '⏵',
+              c,
+              () => _triggerEcsRequest(i, AudioRequest.resume),
+            ),
+            _actionButton(
+              '⏹',
+              const Color(0xFFFF5252),
+              () => _triggerEcsRequest(i, AudioRequest.stop),
+            ),
+          ],
           if (i < _ecsRows.length - 1) const SizedBox(width: 6),
         ],
       ],
@@ -1307,8 +1841,9 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
     double value,
     double min,
     double max,
-    ValueChanged<double> onChanged,
-  ) {
+    ValueChanged<double> onChanged, {
+    int digits = 2,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1339,7 +1874,7 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
         SizedBox(
           width: 32,
           child: Text(
-            value.toStringAsFixed(2),
+            value.toStringAsFixed(digits),
             style: TextStyle(
               color: _demo.accentColor,
               fontSize: 9,
@@ -1447,6 +1982,13 @@ class _AudioEngineScreenState extends State<AudioEngineScreen>
 
 class _AudioCanvasPainter extends CustomPainter {
   final _Demo demo;
+  final Camera camera;
+  final Offset hearAt;
+  final Offset hearRight;
+  final List<_SourceView> sourceViews;
+  final double minDistance;
+  final double maxDistance;
+  final bool atCamera;
   final double elapsed;
   final Color accentColor;
   final bool musicPlaying;
@@ -1463,7 +2005,6 @@ class _AudioCanvasPainter extends CustomPainter {
   final bool dspHighpass;
   final bool dspDelay;
   final bool dspEq;
-  final List<_Spatial3dSource> sources;
   final List<_EcsRow> ecsRows;
   final int voiceCount;
   final int voiceMax;
@@ -1474,6 +2015,13 @@ class _AudioCanvasPainter extends CustomPainter {
 
   const _AudioCanvasPainter({
     required this.demo,
+    required this.camera,
+    required this.hearAt,
+    required this.hearRight,
+    required this.sourceViews,
+    required this.minDistance,
+    required this.maxDistance,
+    required this.atCamera,
     required this.elapsed,
     required this.accentColor,
     required this.musicPlaying,
@@ -1490,7 +2038,6 @@ class _AudioCanvasPainter extends CustomPainter {
     required this.dspHighpass,
     required this.dspDelay,
     required this.dspEq,
-    required this.sources,
     required this.ecsRows,
     required this.voiceCount,
     required this.voiceMax,
@@ -1502,7 +2049,12 @@ class _AudioCanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _background(canvas, size);
+    if (demo == _Demo.spatial3d) {
+      // Over the world the GameWidget drew: grid lines only.
+      _grid(canvas, size);
+    } else {
+      _background(canvas, size);
+    }
     switch (demo) {
       case _Demo.bgm:
         _paintBgm(canvas, size);
@@ -1528,6 +2080,10 @@ class _AudioCanvasPainter extends CustomPainter {
       Rect.fromLTWH(0, 0, size.width, size.height),
       Paint()..color = const Color(0xFF060D18),
     );
+    _grid(canvas, size);
+  }
+
+  void _grid(Canvas canvas, Size size) {
     final gp = Paint()
       ..color = Colors.white.withValues(alpha: 0.025)
       ..strokeWidth = 0.5;
@@ -1743,16 +2299,18 @@ class _AudioCanvasPainter extends CustomPainter {
         final d = (freq - fc) / 500.0;
         gain += 6 * math.exp(-d * d * 2);
       }
-      if (dspDelay)
+      if (dspDelay) {
         gain += -2.5 * (0.5 + 0.5 * math.sin(freq / 220 * math.pi * 2));
+      }
       if (dspReverb) gain += -0.0004 * (freq / 100.0);
 
       final y = (cy - (gain.clamp(-30.0, 18.0) / 30) * size.height * 0.38)
           .clamp(8.0, size.height - 8.0);
-      if (i == 0)
+      if (i == 0) {
         path.moveTo(t * size.width, y);
-      else
+      } else {
         path.lineTo(t * size.width, y);
+      }
     }
     final fill = Path.from(path)
       ..lineTo(size.width, cy)
@@ -1782,88 +2340,123 @@ class _AudioCanvasPainter extends CustomPainter {
 
   // ── Spatial 3D: top-down view ─────────────────────────────────────────────
 
+  /// Over the entities the engine draws (listener and sources): the
+  /// listener's hearing range, a line per source faded by its gain, and how
+  /// each source is heard — gain, pan, doppler pitch, low-pass.
   void _paintSpatial(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final sc = math.min(size.width, size.height) / 380.0;
+    final zoom = camera.zoom;
+    final ear = camera.worldToScreen(hearAt);
 
-    for (final r in [60, 120, 180]) {
-      canvas.drawCircle(
-        Offset(cx, cy),
-        r * sc,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.04)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.5,
-      );
-    }
+    // minDistance (full volume) and maxDistance (silent) around the ear.
+    canvas.drawCircle(
+      ear,
+      minDistance * zoom,
+      Paint()..color = accentColor.withValues(alpha: 0.06),
+    );
+    canvas.drawCircle(
+      ear,
+      minDistance * zoom,
+      Paint()
+        ..color = accentColor.withValues(alpha: 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    canvas.drawCircle(
+      ear,
+      maxDistance * zoom,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
     _tl(
       canvas,
-      '180 u',
-      Offset(cx + 180 * sc + 4, cy - 5),
-      Colors.white.withValues(alpha: 0.15),
+      'min ${minDistance.round()}',
+      ear + Offset(minDistance * zoom + 3, -5),
+      accentColor.withValues(alpha: 0.55),
+      8,
+    );
+    _tl(
+      canvas,
+      'max ${maxDistance.round()}',
+      ear + Offset(maxDistance * zoom + 3, -5),
+      Colors.white.withValues(alpha: 0.3),
       8,
     );
 
-    for (int i = 0; i < sources.length; i++) {
-      final src = sources[i];
-      final wp = src.pos;
-      final sx = cx + wp.dx * sc;
-      final sy = cy + wp.dy * sc;
-      final vol = (1.0 - (wp.distance / 200.0)).clamp(0.05, 1.0);
-      final ringT = (elapsed * 1.5 + i * 0.4) % 1.0;
-
-      canvas.drawCircle(
-        Offset(sx, sy),
-        (12 + ringT * 52) * sc,
-        Paint()
-          ..color = src.color.withValues(alpha: (1 - ringT) * 0.32)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.8,
-      );
-      canvas.drawCircle(
-        Offset(sx, sy),
-        18 * sc,
-        Paint()
-          ..color = src.color.withValues(alpha: vol * 0.22)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10 * sc),
-      );
+    for (int i = 0; i < sourceViews.length; i++) {
+      final src = sourceViews[i];
+      final s = camera.worldToScreen(src.pos);
+      final gain = src.mix.gain;
+      if (src.playing) {
+        final ringT = (elapsed * 1.5 + i * 0.4) % 1.0;
+        canvas.drawCircle(
+          s,
+          12 + ringT * 40 * (0.3 + gain),
+          Paint()
+            ..color = src.color.withValues(alpha: (1 - ringT) * 0.45 * gain)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.8,
+        );
+      }
       canvas.drawLine(
-        Offset(sx, sy),
-        Offset(cx, cy),
+        s,
+        ear,
         Paint()
-          ..color = src.color.withValues(alpha: 0.12 + vol * 0.28)
+          ..color = src.color.withValues(alpha: 0.06 + gain * 0.4)
           ..strokeWidth = 1,
       );
-      canvas.drawCircle(Offset(sx, sy), 7 * sc, Paint()..color = src.color);
+      final pan = src.mix.pan;
+      final lp = src.mix.lowPass;
       _tl(
         canvas,
-        '${src.label}  ${(vol * 100).round()}%',
-        Offset(sx - 22, sy + 10 * sc),
-        src.color.withValues(alpha: 0.75),
+        '${src.label}  ${(gain * 100).round()}%  '
+        'pan ${pan >= 0 ? '+' : ''}${pan.toStringAsFixed(2)}',
+        s + const Offset(-24, 12),
+        src.color.withValues(alpha: src.playing ? 0.9 : 0.5),
         9,
+      );
+      _tl(
+        canvas,
+        '×${src.mix.pitch.toStringAsFixed(2)}'
+        '${lp > 0 ? '  lp ${(lp / 1000).toStringAsFixed(1)}k' : ''}',
+        s + const Offset(-24, 24),
+        src.color.withValues(alpha: src.playing ? 0.6 : 0.35),
+        8,
       );
     }
 
-    canvas.drawCircle(
-      Offset(cx, cy),
-      18 * sc,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.18)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * sc),
-    );
-    canvas.drawCircle(Offset(cx, cy), 11 * sc, Paint()..color = Colors.white);
-    canvas.drawCircle(
-      Offset(cx, cy),
-      4 * sc,
-      Paint()..color = const Color(0xFF060D18),
+    // Placed one-shots.
+    for (final r in ripples) {
+      final at = r.at;
+      if (at == null) continue;
+      canvas.drawCircle(
+        camera.worldToScreen(at),
+        6 + r.t * 46,
+        Paint()
+          ..color = const Color(0xFFFFCA28).withValues(alpha: (1 - r.t) * 0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    }
+
+    // The ears: left and right of where the AudioSystem says the listener
+    // is and faces.
+    _ct(canvas, 'L', ear - hearRight * 22, Colors.white60, 9);
+    _ct(canvas, 'R', ear + hearRight * 22, Colors.white60, 9);
+    _ct(
+      canvas,
+      atCamera ? 'LISTENER (at camera)' : 'LISTENER',
+      ear + const Offset(0, 24),
+      Colors.white.withValues(alpha: 0.45),
+      8,
     );
     _ct(
       canvas,
-      'LISTENER',
-      Offset(cx, cy + 18 * sc),
-      Colors.white.withValues(alpha: 0.4),
-      8,
+      'drag to move the AudioListenerComponent',
+      Offset(size.width / 2, size.height - 12),
+      Colors.white.withValues(alpha: 0.25),
+      9,
     );
   }
 
@@ -1929,6 +2522,16 @@ class _AudioCanvasPainter extends CustomPainter {
           tag.text,
           Offset(x + 10, ty + 4),
           tag.color.withValues(alpha: 0.9),
+          8,
+        );
+      }
+      // Read back from the component every frame.
+      if (row.state.isNotEmpty) {
+        _tl(
+          canvas,
+          row.state,
+          Offset(x + 8, padY + boxH - 18),
+          Colors.white.withValues(alpha: 0.55),
           8,
         );
       }
@@ -2042,10 +2645,11 @@ class _AudioCanvasPainter extends CustomPainter {
             22 +
             math.sin(t * math.pi * 20 + elapsed * 7.5) * env * 30 * streamVol +
             math.sin(t * math.pi * 8 + elapsed * 4.1) * env * 13 * streamVol;
-        if (i == 0)
+        if (i == 0) {
           path.moveTo(wStart + t * wW, y);
-        else
+        } else {
           path.lineTo(wStart + t * wW, y);
+        }
       }
       canvas.drawPath(
         path,

@@ -20,6 +20,8 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.11.0
+  # just_game_engine 2.x (just_graphics_engine) needs Flutter GPU builds.
+  flutter: ">=3.47.1"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -39,12 +41,22 @@ dependencies:
   # Firebase
   firebase_core: ^4.6.0
   
-  # Just Game Engine package
-  just_game_engine: ^1.6.0
+  # Just Game Engine packages
+  just_game_engine: ^2.0.0-dev.2
+  # 3-D graphics are drawn by just_graphics_engine on Flutter GPU (switched on
+  # in each platform runner); the engine re-exports it from graphics_3d.dart.
+  just_graphics_engine: ^0.1.0-dev.2
+  # Input actions, bindings and the asset model (ActionMapDef, ...).
+  just_inputs: ^0.1.1
+  just_audio_engine: ^1.1.0
+  just_physics_engine: ^1.4.1
+  just_signals: ^1.0.2
+  just_storage: ^1.2.1
+  just_database: ^1.4.2
   just_debugger: ^0.0.1
   url_launcher: ^6.3.2
   just_di: ^1.0.0
-  just_tiled: ^0.2.0
+  just_tiled: ^0.4.1
   just_game_engine_editor:
     path: packages/just_game_engine_editor
 
@@ -59,6 +71,13 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+# 3-D physics (the Physics 3D demo) runs on Jolt, built by just_jolt's build
+# hook. A 2-D only app would leave this out.
+hooks:
+  user_defines:
+    just_jolt:
+      build: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -84,6 +103,12 @@ flutter:
     - assets/sprites/environment/house/
     - assets/sprites/environment/parallax/
     - assets/maps/
+    - assets/input/
+    - assets/materials/
+    - assets/timelines/
+    - assets/scenes/
+    - assets/prefabs/
+    - assets/models/
 
   # Custom GLSL fragment shaders compiled and bundled by Flutter's shader pipeline.
   shaders:

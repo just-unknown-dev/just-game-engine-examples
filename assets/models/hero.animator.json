@@ -1,0 +1,431 @@
+{
+  "version": 2,
+  "atlas": "assets/models/hero.glb",
+  "entry": "Move",
+  "parameters": [
+    {
+      "name": "planarSpeed",
+      "type": "float",
+      "binding": "planarSpeed"
+    },
+    {
+      "name": "grounded",
+      "type": "bool",
+      "binding": "grounded"
+    },
+    {
+      "name": "crouching",
+      "type": "bool",
+      "binding": "crouching"
+    },
+    {
+      "name": "jumping",
+      "type": "bool",
+      "binding": "jumping"
+    },
+    {
+      "name": "onGround",
+      "type": "float",
+      "binding": "grounded"
+    },
+    {
+      "name": "striking",
+      "type": "bool",
+      "binding": "striking"
+    },
+    {
+      "name": "inCombat",
+      "type": "bool",
+      "binding": "inCombat"
+    },
+    {
+      "name": "punch_1",
+      "type": "trigger"
+    },
+    {
+      "name": "punch_2",
+      "type": "trigger"
+    },
+    {
+      "name": "punch_3",
+      "type": "trigger"
+    },
+    {
+      "name": "kick_1",
+      "type": "trigger"
+    },
+    {
+      "name": "kick_2",
+      "type": "trigger"
+    },
+    {
+      "name": "kick_3",
+      "type": "trigger"
+    }
+  ],
+  "states": [
+    {
+      "name": "Move",
+      "x": 0.0,
+      "y": 0.0,
+      "blend": {
+        "type": "1d",
+        "parameter": "planarSpeed",
+        "motions": [
+          {
+            "clip": "idle"
+          },
+          {
+            "clip": "walk",
+            "threshold": 1.2,
+            "speed": 0.6
+          },
+          {
+            "clip": "walk",
+            "threshold": 2.0
+          },
+          {
+            "clip": "run",
+            "threshold": 4.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "Crouch",
+      "x": 0.0,
+      "y": 160.0,
+      "blend": {
+        "type": "1d",
+        "parameter": "planarSpeed",
+        "motions": [
+          {
+            "clip": "crouch_idle"
+          },
+          {
+            "clip": "crouch_walk",
+            "threshold": 0.415
+          },
+          {
+            "clip": "crouch_walk",
+            "threshold": 1.0,
+            "speed": 2.41
+          }
+        ]
+      }
+    },
+    {
+      "name": "Jump",
+      "loop": false,
+      "x": 260.0,
+      "y": 80.0,
+      "blend": {
+        "type": "1d",
+        "parameter": "onGround",
+        "motions": [
+          {
+            "clip": "jump",
+            "speed": 0.453
+          },
+          {
+            "clip": "jump",
+            "threshold": 1.0,
+            "speed": 1.833
+          }
+        ]
+      }
+    },
+    {
+      "name": "Guard",
+      "clip": "combat_idle",
+      "x": 520.0,
+      "y": 80.0
+    },
+    {
+      "name": "punch_1",
+      "loop": false,
+      "x": 780.0,
+      "y": 0.0
+    },
+    {
+      "name": "punch_2",
+      "loop": false,
+      "x": 1000.0,
+      "y": 0.0
+    },
+    {
+      "name": "punch_3",
+      "loop": false,
+      "x": 1220.0,
+      "y": 0.0
+    },
+    {
+      "name": "kick_1",
+      "loop": false,
+      "x": 780.0,
+      "y": 160.0
+    },
+    {
+      "name": "kick_2",
+      "loop": false,
+      "x": 1000.0,
+      "y": 160.0
+    },
+    {
+      "name": "kick_3",
+      "loop": false,
+      "x": 1220.0,
+      "y": 160.0
+    }
+  ],
+  "transitions": [
+    {
+      "from": "*",
+      "to": "Jump",
+      "conditions": [
+        {
+          "param": "jumping",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.05
+    },
+    {
+      "from": "*",
+      "to": "Jump",
+      "conditions": [
+        {
+          "param": "grounded",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "Jump",
+      "to": "Move",
+      "conditions": [
+        {
+          "param": "grounded",
+          "op": "==",
+          "value": true
+        },
+        {
+          "param": "jumping",
+          "op": "==",
+          "value": false
+        },
+        {
+          "param": "crouching",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.15
+    },
+    {
+      "from": "Jump",
+      "to": "Crouch",
+      "conditions": [
+        {
+          "param": "grounded",
+          "op": "==",
+          "value": true
+        },
+        {
+          "param": "jumping",
+          "op": "==",
+          "value": false
+        },
+        {
+          "param": "crouching",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.15
+    },
+    {
+      "from": "Move",
+      "to": "Crouch",
+      "conditions": [
+        {
+          "param": "crouching",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.2
+    },
+    {
+      "from": "Crouch",
+      "to": "Move",
+      "conditions": [
+        {
+          "param": "crouching",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.2
+    },
+    {
+      "from": "*",
+      "to": "punch_1",
+      "conditions": [
+        {
+          "param": "punch_1",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "*",
+      "to": "punch_2",
+      "conditions": [
+        {
+          "param": "punch_2",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "*",
+      "to": "punch_3",
+      "conditions": [
+        {
+          "param": "punch_3",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "*",
+      "to": "kick_1",
+      "conditions": [
+        {
+          "param": "kick_1",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "*",
+      "to": "kick_2",
+      "conditions": [
+        {
+          "param": "kick_2",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "*",
+      "to": "kick_3",
+      "conditions": [
+        {
+          "param": "kick_3",
+          "op": "==",
+          "value": true
+        }
+      ],
+      "duration": 0.08
+    },
+    {
+      "from": "punch_1",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "punch_2",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "punch_3",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "kick_1",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "kick_2",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "kick_3",
+      "to": "Guard",
+      "conditions": [
+        {
+          "param": "striking",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.1
+    },
+    {
+      "from": "Guard",
+      "to": "Move",
+      "conditions": [
+        {
+          "param": "inCombat",
+          "op": "==",
+          "value": false
+        }
+      ],
+      "duration": 0.25
+    }
+  ]
+}
